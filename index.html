@@ -31,20 +31,49 @@
         <h3>
 <a name="summary" class="anchor" href="#summary"><span class="octicon octicon-link"></span></a>Summary</h3>
 
+<p>I will create a novel lossy image compression algorithm/format which decomposes an image into a small number of polygons using a genetic algorithm.</p>
+
 <h3>
 <a name="background" class="anchor" href="#background"><span class="octicon octicon-link"></span></a>Background</h3>
+
+<p>Roger Alsing showed in 2008 the possibility of <a href="http://rogeralsing.com/2008/12/07/genetic-programming-evolution-of-mona-lisa/">representing images with polygons</a>. He applied a genetic algorithm which randomly generates polygons and uses a stochastic selection process to prefer images closest to the one we want to generate. I want to extend this work to both a) be suitable as a new image format and b) generate optimal images as fast as possible.</p>
 
 <h3>
 <a name="challenges" class="anchor" href="#challenges"><span class="octicon octicon-link"></span></a>Challenges</h3>
 
+<p>Firstly, as far as I can tell, this space hasn't been explored beyond the above blog post and subsequent discussion the topic. There are no references on optimal genetic algorithms for mapping polygons to images. I've dealt in neither genetic algorithms nor image compression before, so I'll have to explore ways to optimize both.</p>
+
 <h3>
 <a name="resources" class="anchor" href="#resources"><span class="octicon octicon-link"></span></a>Resources</h3>
+
+<p>I'll just be using my own machine for the work. If it's suitable, I will draw from the Alsing codebase to provide a starting point for my compression algorithm. I will continue to explore the research space to find other genetic compression algorithms and see if they use any ideas applicable to my project.</p>
 
 <h3>
 <a name="goals" class="anchor" href="#goals"><span class="octicon octicon-link"></span></a>Goals</h3>
 
+<p><strong>Plan to Achieve</strong></p>
+
+<ul>
+<li>Optimize the Alsing algorithm to find better reconstructions faster. Alsing only explored this space in brief, so I think there's definitely room for more work.</li>
+<li>Create a new file format for my compressed images that achieves at least a 2x reduction in size over JPEG without a significant loss in comparative quality. </li>
+</ul>
+
+<p><strong>Hope to Achieve</strong></p>
+
+<ul>
+<li>Reduce compression times to something actually usable by a consumer.</li>
+<li>Achieve quality greater than or equal to JPEG without trading compression.</li>
+</ul>
+
 <h3>
 <a name="schedule" class="anchor" href="#schedule"><span class="octicon octicon-link"></span></a>Schedule</h3>
+
+<ul>
+<li>Friday, November 14: have basic algorithm up and running, i.e. converting the Alsing algorithm to Rust.</li>
+<li>Friday, November 21: compressed image format is done, and images are being saved to .gpe.</li>
+<li>Monday, December 1: research is done and genetic algorithm is as optimized as possible for correctness.</li>
+<li>Monday, December 8: algorithm is further optimized for speed, and benchmarks are created. Rest of the time is spent running tests and doing writeup.</li>
+</ul>
       </section>
       <footer>
         <p>This project is maintained by <a href="https://github.com/willcrichton">willcrichton</a></p>
