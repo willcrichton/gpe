@@ -14,8 +14,8 @@ use encoding::Encoding;
 
 fn render_image(c: &Context, gl: &mut Gl, img: &Encoding) {
     for polygon in img.polygons().iter() {
-        let (r, g, b) = polygon.color;
-        c.polygon(&*polygon.vertices).rgb(r, g, b).draw(gl);
+        let (r, g, b, a) = polygon.color;
+        c.polygon(&*polygon.vertices).rgba(r, g, b, a).draw(gl);
     }
 }
 
@@ -36,7 +36,7 @@ pub fn render(img: Encoding) {
     let window = RefCell::new(window);
     for e in Events::new(&window) {
         use self::event::RenderEvent;
-        e.render(|args| {
+        e.render(|_| {
             gl.viewport(0, 0, width as i32, height as i32);
             let c = Context::abs(width as f64, height as f64);
             c.rgb(1.0, 1.0, 1.0).draw(gl);

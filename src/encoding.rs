@@ -1,6 +1,6 @@
 pub struct Polygon {
     pub vertices: Box<[[f64, ..2]]>,
-    pub color: (f32, f32, f32),
+    pub color: (f32, f32, f32, f32),
 }
 
 pub struct Encoding {
