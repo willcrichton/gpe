@@ -4,7 +4,7 @@ extern crate getopts;
 extern crate image;
 
 use std::os;
-//use std::io::File;
+use std::io::File;
 
 mod compress;
 mod render;
@@ -27,12 +27,14 @@ fn main() {
         return usage(args[0].as_slice(), Some("can only compress one file at a time"));
     }
 
-    let img = image::open(&Path::new(matches.free[0].clone())).unwrap();
-    let compressed = compress::compress(img);
-    render::render(compressed);
+    let compressed = match image::open(&Path::new(matches.free[0].clone())).unwrap() {
+        image::ImageRgb8(buf) => compress::compress(buf),
+        _ => panic!("image must be RGB")
+    };
+    let output = render::render(&compressed);
 
-    //let save_file = File::create(&Path::new("out.png")).unwrap();
-    //let _ = image::ImageRgb8(imgbuf).save(save_file, image::PNG);
+    let save_file = File::create(&Path::new("out.png")).unwrap();
+    let _ = image::ImageRgb8(output).save(save_file, image::PNG);
 }
 
 fn opts() -> Vec<getopts::OptGroup> {

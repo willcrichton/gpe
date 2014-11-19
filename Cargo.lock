@@ -3,7 +3,7 @@ name = "gpe"
 version = "0.0.1"
 dependencies = [
  "graphics 0.0.0 (git+https://github.com/PistonDevelopers/graphics)",
- "image 0.1.0 (git+https://github.com/pistondevelopers/image)",
+ "image 0.1.0 (git+https://github.com/PistonDevelopers/image)",
  "opengl_graphics 0.0.0 (git+https://github.com/pistondevelopers/opengl_graphics)",
  "sdl2_window 0.0.0 (git+https://github.com/pistondevelopers/sdl2_window)",
 ]
@@ -57,7 +57,7 @@ dependencies = [
 [[package]]
 name = "image"
 version = "0.1.0"
-source = "git+https://github.com/pistondevelopers/image#4d83ec4e6abc2bdfce3da3e5f49762728b9f5617"
+source = "git+https://github.com/PistonDevelopers/image#4d83ec4e6abc2bdfce3da3e5f49762728b9f5617"
 
 [[package]]
 name = "input"
@@ -76,7 +76,7 @@ source = "git+https://github.com/pistondevelopers/opengl_graphics#e6f53f7e705c85
 dependencies = [
  "gl 0.0.1 (git+https://github.com/bjz/gl-rs)",
  "graphics 0.0.0 (git+https://github.com/PistonDevelopers/graphics)",
- "image 0.1.0 (git+https://github.com/pistondevelopers/image)",
+ "image 0.1.0 (git+https://github.com/PistonDevelopers/image)",
  "shader_version 0.0.0 (git+https://github.com/pistondevelopers/shader_version)",
  "texture 0.0.0 (git+https://github.com/PistonDevelopers/texture)",
 ]
