@@ -1,6 +1,7 @@
 use std::fmt;
 use std::num::Float;
 use std::rand::random;
+use std::cmp::{min, max};
 
 use render::Image;
 use constants::*;
@@ -20,6 +21,7 @@ pub struct Polygon {
     edges: Vec<(Point, Point)>,
     center: Point,
     max_dist: f32,
+    pub bounding_box: (Point, Point),
 }
 
 #[deriving(Clone)]
@@ -106,6 +108,7 @@ impl Polygon {
             edges: Vec::new(),
             center: Point {x: 0.0, y: 0.0},
             max_dist: 0.0,
+            bounding_box: (Point {x: 0.0, y: 0.0}, Point {x: 0.0, y: 0.0}),
         };
 
         polygon.update_data();
@@ -147,24 +150,37 @@ impl Polygon {
             max_dist = if vdist > max_dist { vdist } else { max_dist };
         }
 
+        // TODO: actual w, h
+        let (mut minx, mut miny, mut maxx, mut maxy) =
+            (200 - 1, 220 - 1, 0, 0);
+
+        for vertex in self.vertices.iter() {
+            minx = min(minx, vertex.x as u32);
+            miny = min(miny, vertex.y as u32);
+            maxx = max(maxx, vertex.x as u32);
+            maxy = max(maxy, vertex.y as u32);
+        }
+
         self.edges = edges;
         self.center = center;
         self.max_dist = max_dist;
+        self.bounding_box = (Point {x: minx as f32, y: miny as f32},
+                             Point {x: maxx as f32, y: maxy as f32});
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn query(&self, pt: &Point, antialias: bool) -> (bool, f32) {
         let mut inside = false;
         let mut min_dist = 100000.0;
         for &(a, b) in self.edges.iter() {
-            let ba = b - a;
             if ((a.y > pt.y) != (b.y > pt.y)) &&
-                (pt.x < (ba.x) * (pt.y - a.y) / (ba.y) + a.x)
+                (pt.x < (b.x - a.x) * (pt.y - a.y) / (b.y - a.y) + a.x)
             {
                 inside = !inside;
             }
 
             if antialias {
+                let ba = b - a;
                 let mag = a.distance_squared(&b);
                 let t = (*pt - a).dot(&ba) / mag;
                 let dist = if t < 0.0 { pt.distance_squared(&a) }
@@ -175,21 +191,33 @@ impl Polygon {
             }
         }
 
-        (inside, min_dist.sqrt())
+        (inside, if antialias { min_dist.sqrt() } else { 0.0 })
     }
 
-    pub fn get_color(&self, p: Point) -> Color {
+    #[inline]
+    pub fn color(&self, p: Point) -> Color {
         let scale = p.distance(&self.center) / self.max_dist;
         let (r, g, b, a) = self.color;
-        let convert = |n: u8| { ((n as f32) * (1.0 - scale)) as u8 };
-        (convert(r), convert(g), convert(b), a)
+        (((r as f32) * (1.0 - scale)) as u8,
+         ((g as f32) * (1.0 - scale)) as u8,
+         ((b as f32) * (1.0 - scale)) as u8,
+         a)
+    }
+
+    #[inline]
+    fn rand_color(&self, base: u8) -> u8 {
+        if should_mutate(CHANGE_COLOR_RATE) {
+            min(max((base as f32 + (random::<f32>() - 0.5) * CHANGE_COLOR_MAX) as uint, 0), 255) as u8
+        } else {
+            base
+        }
     }
 
     pub fn mutate(&mut self, dimensions: (u32, u32)) {
         let (mut r, mut g, mut b, mut a) = self.color;
-        r = if should_mutate(CHANGE_COLOR_RATE) { random::<u8>() } else { r };
-        g = if should_mutate(CHANGE_COLOR_RATE) { random::<u8>() } else { g };
-        b = if should_mutate(CHANGE_COLOR_RATE) { random::<u8>() } else { b };
+        r = self.rand_color(r);
+        g = self.rand_color(g);
+        b = self.rand_color(b);
         a = if should_mutate(CHANGE_COLOR_RATE) { random::<u8>() % 60 + 30 } else { a };
         self.color = (r, g, b, a);
 
@@ -211,8 +239,8 @@ impl Polygon {
 }
 
 fn clamp(p: &mut Point, (w, h): (u32, u32)) {
-    p.x = max(min(p.x, (w - 1) as f32), 0.0);
-    p.y = max(min(p.y, (h - 1) as f32), 0.0);
+    p.x = fmax(fmin(p.x, (w - 1) as f32), 0.0);
+    p.y = fmax(fmin(p.y, (h - 1) as f32), 0.0);
 }
 
 
@@ -235,12 +263,12 @@ fn order_points(mut vertices: Vec<Point>) -> Vec<Point> {
 }
 
 #[inline(always)]
-fn min(a: f32, b: f32) -> f32 {
+fn fmin(a: f32, b: f32) -> f32 {
     if a < b { a } else { b }
 }
 
 #[inline(always)]
-fn max(a: f32, b: f32) -> f32 {
+fn fmax(a: f32, b: f32) -> f32 {
     if a < b { b } else { a }
 }
 

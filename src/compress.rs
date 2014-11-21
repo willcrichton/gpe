@@ -34,7 +34,7 @@ pub fn compress(img: image::ImageBuf<image::Rgb<u8>>) -> Encoding {
 
 #[inline(always)]
 fn diff(a: u8, b: u8) -> uint {
-    (if a > b { a - b } else { 2 * (b - a) }) as uint
+    (if a > b { (a - b) as uint } else { 3 * ((b - a) as uint) })
 }
 
 fn fitness((w, h): (u32, u32), base: Arc<Image>, individual: Arc<Option<Encoding>>) -> uint {
@@ -134,9 +134,10 @@ impl Compressor {
         let mut max_score = 0u;
         for i in range(0, w * h) {
             let (r, g, b) = self.base[i as uint];
-            max_score += (if r > 128 { r } else { 255 - r }) as uint;
-            max_score += (if g > 128 { g } else { 255 - g }) as uint;
-            max_score += (if b > 128 { b } else { 255 - b }) as uint;
+            max_score += (r as uint) + (g as uint) + (b as uint);
+            //max_score += (if r > 128 { r } else { 255 - r }) as uint;
+            //max_score += (if g > 128 { g } else { 255 - g }) as uint;
+            //max_score += (if b > 128 { b } else { 255 - b }) as uint;
         }
 
         max_score

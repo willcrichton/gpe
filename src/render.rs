@@ -1,4 +1,3 @@
-use std::cmp::{min, max};
 use std::iter::range_inclusive;
 
 use encoding::{Encoding, Point, Color};
@@ -11,22 +10,14 @@ pub fn render(img: &Encoding, antialias: bool) -> Image {
     let mut imgbuf = Vec::from_fn((w * h) as uint, |_| (0, 0, 0));
 
     for polygon in img.polygons.iter() {
-        let (mut minx, mut miny, mut maxx, mut maxy) =
-            (w - 1, h - 1, 0, 0);
-
-        for vertex in polygon.vertices.iter() {
-            minx = min(minx, vertex.x as u32);
-            miny = min(miny, vertex.y as u32);
-            maxx = max(maxx, vertex.x as u32);
-            maxy = max(maxy, vertex.y as u32);
-        }
-
-        for y in range_inclusive(miny, maxy) {
-            for x in range_inclusive(minx, maxx) {
+        let (min, max) = polygon.bounding_box;
+        for y in range_inclusive(min.y as u32, max.y as u32) {
+            for x in range_inclusive(min.x as u32, max.x as u32) {
                 let pt = Point {x: x as f32, y: y as f32};
                 let (contains, dist) = polygon.query(&pt, antialias);
+
                 if contains || (antialias && dist < 4.0) {
-                    let mut new_color = polygon.get_color(pt);
+                    let mut new_color = polygon.color(pt);
                     if !contains {
                         let (r, g, b, a) = new_color;
                         let scale = (1.0 + dist) * (1.0 + dist);
