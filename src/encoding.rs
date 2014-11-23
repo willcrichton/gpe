@@ -2,9 +2,11 @@ use std::fmt;
 use std::num::Float;
 use std::rand::random;
 use std::cmp::{min, max};
+use std::iter::range_inclusive;
 
 use render::Image;
 use constants::*;
+use compress::Compressor;
 
 #[deriving(Clone)]
 pub struct Point {
@@ -115,7 +117,8 @@ impl Polygon {
         polygon
     }
 
-    pub fn random((w, h): (u32, u32)) -> Polygon {
+    pub fn random(compressor: &Compressor) -> Polygon {
+        let (w, h) = compressor.dimensions;
         let origin = Point {x: random::<f32>() * (w as f32), y: random::<f32>() * (h as f32)};
 
         let mut vertices = vec![origin];
@@ -126,8 +129,32 @@ impl Polygon {
             vertices.push(vtx);
         }
 
-        Polygon::new(order_points(vertices),
-                     (random::<u8>(), random::<u8>(), random::<u8>(), 30 + random::<u8>() % 60))
+        let mut polygon = Polygon::new(order_points(vertices), (0, 0, 0, 0));
+        let (mut r, mut g, mut b) = (0, 0, 0);
+        let mut count = 0u;
+        let (bbmin, bbmax) = polygon.bounding_box;
+
+        // weight color towards expected color in base
+        for y in range_inclusive(bbmin.y as u32, bbmax.y as u32) {
+            for x in range_inclusive(bbmin.x as u32, bbmax.x as u32) {
+                let pt = Point {x: x as f32, y: y as f32};
+                let (contains, _) = polygon.query(&pt, false);
+                let (br, bg, bb) = compressor.base[((y * w) + x) as uint];
+                if contains {
+                    count += 1;
+                    r += br as uint;
+                    g += bg as uint;
+                    b += bb as uint;
+                }
+            }
+        }
+
+        polygon.color = (polygon.rand_color((r / count) as u8),
+                         polygon.rand_color((g / count) as u8),
+                         polygon.rand_color((b / count) as u8),
+                         random::<u8>() % 60 + 30);
+
+        polygon
     }
 
     fn update_data(&mut self) {

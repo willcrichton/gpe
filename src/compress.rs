@@ -8,9 +8,9 @@ use encoding::{Encoding, Polygon};
 use render::{render, Image};
 use constants::*;
 
-struct Compressor {
-    dimensions: (u32, u32),
-    base: Arc<Image>
+pub struct Compressor {
+    pub dimensions: (u32, u32),
+    pub base: Arc<Image>,
 }
 
 pub fn compress(img: image::ImageBuf<image::Rgb<u8>>) -> Encoding {
@@ -34,7 +34,7 @@ pub fn compress(img: image::ImageBuf<image::Rgb<u8>>) -> Encoding {
 
 #[inline(always)]
 fn diff(a: u8, b: u8) -> uint {
-    (if a > b { (a - b) as uint } else { 3 * ((b - a) as uint) })
+    (if a > b { (a - b) as uint } else { 2 * ((b - a) as uint) })
 }
 
 fn fitness((w, h): (u32, u32), base: Arc<Image>, individual: Arc<Option<Encoding>>) -> uint {
@@ -57,7 +57,7 @@ impl Compressor {
         for _ in range(0, POPULATION_SIZE) {
             let mut polygons = Vec::new();
             for _ in range(0, INITIAL_POLYGONS) {
-                let polygon = Polygon::random(self.dimensions);
+                let polygon = Polygon::random(self);
                 polygons.push(polygon);
             }
 
@@ -85,7 +85,7 @@ impl Compressor {
                 candidate.polygons = new_polygons;
 
                 if should_mutate(ADD_POLYGON_RATE) {
-                    candidate.polygons.push(Polygon::random(self.dimensions));
+                    candidate.polygons.push(Polygon::random(self));
                 }
 
                 new_population.push(Arc::new(Some(candidate)));
@@ -134,10 +134,9 @@ impl Compressor {
         let mut max_score = 0u;
         for i in range(0, w * h) {
             let (r, g, b) = self.base[i as uint];
-            max_score += (r as uint) + (g as uint) + (b as uint);
-            //max_score += (if r > 128 { r } else { 255 - r }) as uint;
-            //max_score += (if g > 128 { g } else { 255 - g }) as uint;
-            //max_score += (if b > 128 { b } else { 255 - b }) as uint;
+            max_score += diff(r, 0);//max(diff(r, 0), diff(r, 255));
+            max_score += diff(g, 0);//max(diff(g, 0), diff(g, 255));
+            max_score += diff(b, 0);//max(diff(b, 0), diff(b, 255));
         }
 
         max_score
