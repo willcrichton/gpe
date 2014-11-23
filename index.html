@@ -29,6 +29,23 @@
       </header>
       <section>
         <h2>
+<a id="checkpoint-15" class="anchor" href="#checkpoint-15" aria-hidden="true"><span class="octicon octicon-link"></span></a>Checkpoint 1.5</h2>
+
+<p>In the last week, I rewrote the entire polygon renderer from scratch to use both radial gradients as well as antialiasing. I also added the basic polygon compressor. I've been working on:</p>
+
+<ul>
+<li>Efficiency. The algorithm takes a <em>long</em> time to run, so I'm doing whatever possible to make each set of mutations and fitness evaluations occur as quickly as possible, an iterative process of profiling and tweaking. The most expensive computation is rendering a set of polygons to an image (a la the 418 circle renderer), so I'm considering offloading the rendering to CUDA or something more efficient using Rust's FFI.</li>
+<li>Heuristics. The baseline genetic algorithm just randomly changes colors/vertex positions/etc. based on some threshold (e.g. 1/1500 chance). I'm adding heuristics to the mutations to more closely match the base image, like polygons covering regions with low fitness scores and having a start color equal to the average of the region's color in the base image.</li>
+<li>Constants. As mentioned, each mutation occurs with some frequency, so I'm attempting to find the optimal frequencies as well as optimal population size.</li>
+</ul>
+
+<p>The initial incarnation of the algorithm took 900,000 generations and 3 hours to produce an image. I'm using a larger population size and hence run generations less quickly. I haven't taken the 3 hours yet to produce a quality image, but here's an image after ~1k generations and 2 minutes:</p>
+
+<p><img src="images/out3.png" alt=""></p>
+
+<p>I'll update the next checkpoint with a higher quality image.</p>
+
+<h2>
 <a id="checkpoint-1" class="anchor" href="#checkpoint-1" aria-hidden="true"><span class="octicon octicon-link"></span></a>Checkpoint 1</h2>
 
 <p>I'm going to preface this by saying the past two weeks have been utter hell--I've been working from morning to midnight every day trying to finish compilers, do algo, and keep up with interviews and other commitments. By the end of this week, L5 will be done for compilers, and life settles down a bit since interview season is over. Hence, I don't have too much to show for checkpoint 1, but I will work twice as hard before the next checkpoint to stay on schedule.</p>
