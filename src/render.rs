@@ -5,9 +5,17 @@ use encoding::{Encoding, Point, Color};
 type BufColor = (u8, u8, u8);
 pub type Image = Vec<BufColor>;
 
+extern {
+    fn cuda_render(img: Encoding);
+}
+
 pub fn render(img: &Encoding, antialias: bool) -> Image {
     let (w, h) = img.dimensions;
     let mut imgbuf = Vec::from_fn((w * h) as uint, |_| (0, 0, 0));
+
+    unsafe {
+        cuda_render(img.clone());
+    }
 
     for polygon in img.polygons.iter() {
         let (min, max) = polygon.bounding_box;

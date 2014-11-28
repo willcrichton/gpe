@@ -60,6 +60,7 @@ impl Point {
         self.x * other.x + self.y * other.y
     }
 
+    #[inline]
     pub fn mutate(&mut self, (w, h): (u32, u32)) {
         if should_mutate(MOVE_VERTEX_RATE) {
             self.x += (random::<f32>() - 0.5) * MOVE_VERTEX_MAX;
@@ -223,12 +224,13 @@ impl Polygon {
 
     #[inline]
     pub fn color(&self, p: Point) -> Color {
-        let scale = p.distance(&self.center) / self.max_dist;
+        /*let scale = p.distance(&self.center) / self.max_dist;
         let (r, g, b, a) = self.color;
         (((r as f32) * (1.0 - scale)) as u8,
          ((g as f32) * (1.0 - scale)) as u8,
          ((b as f32) * (1.0 - scale)) as u8,
-         a)
+            a)*/
+        self.color
     }
 
     #[inline]
