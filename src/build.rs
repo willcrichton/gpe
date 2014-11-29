@@ -20,12 +20,12 @@ fn main() {
 
     // compile CUDA code into device relocatable code
     run(Command::new("nvcc")
-        .args(&["-arch=sm_35", "-dc", "src/render.cu", "-o"])
+        .args(&["-arch=sm_20", "-dc", "src/render.cu", "-o"])
         .arg(format!("{}/render.o", out_dir)));
 
     // convert relocatable code into executable code
     run(Command::new("nvcc")
-        .args(&["-arch=sm_35", "-dlink", format!("{}/render.o", out_dir).as_slice(), "-o"])
+        .args(&["-arch=sm_20", "-dlink", format!("{}/render.o", out_dir).as_slice(), "-o"])
         .arg(format!("{}/render_dlink.o", out_dir)));
 
     // turn it into a static library
