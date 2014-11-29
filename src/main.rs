@@ -49,6 +49,7 @@ fn main() {
         _ => panic!("image must be RGB")
     };
     let output = render::render(&compressed, true);
+    println!("{}", output[0]);
 
     let save_file = File::create(&Path::new("out.png")).unwrap();
     let pixels = output.into_iter().map(|(r, g, b)| image::Rgb(r, g, b)).collect();

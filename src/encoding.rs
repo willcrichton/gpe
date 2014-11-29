@@ -4,17 +4,24 @@ use std::rand::random;
 use std::cmp::{min, max};
 use std::iter::range_inclusive;
 
-use render::Image;
 use constants::*;
 use compress::Compressor;
 
 #[deriving(Clone)]
+#[repr(C)]
 pub struct Point {
     pub x: f32,
     pub y: f32,
 }
 
 pub type Color = (u8, u8, u8, u8);
+
+#[repr(C)]
+pub struct RGB {
+    pub r: u8,
+    pub g: u8,
+    pub b: u8,
+}
 
 #[deriving(Clone)]
 pub struct Polygon {
@@ -26,11 +33,41 @@ pub struct Polygon {
     pub bounding_box: (Point, Point),
 }
 
+#[repr(C)]
+pub struct CPolygon {
+    pub vertices: *mut Point,
+    pub num_vertices: u32,
+    pub r: u8, pub g: u8, pub b: u8, pub a: u8,
+}
+
 #[deriving(Clone)]
 pub struct Encoding {
     pub polygons: Vec<Polygon>,
     pub dimensions: (u32, u32),
-    pub render: Option<Image>,
+}
+
+#[repr(C)]
+pub struct CEncoding {
+    pub polygons: *mut CPolygon,
+    pub num_polygons: u32,
+    pub width: u32,
+    pub height: u32,
+}
+
+#[inline(always)]
+fn fmin(a: f32, b: f32) -> f32 {
+    if a < b { a } else { b }
+}
+
+#[inline(always)]
+fn fmax(a: f32, b: f32) -> f32 {
+    if a < b { b } else { a }
+}
+
+#[inline(always)]
+fn clamp(p: &mut Point, (w, h): (u32, u32)) {
+    p.x = fmax(fmin(p.x, (w - 1) as f32), 0.0);
+    p.y = fmax(fmin(p.y, (h - 1) as f32), 0.0);
 }
 
 impl Point {
@@ -224,13 +261,12 @@ impl Polygon {
 
     #[inline]
     pub fn color(&self, p: Point) -> Color {
-        /*let scale = p.distance(&self.center) / self.max_dist;
+        let scale = p.distance(&self.center) / self.max_dist;
         let (r, g, b, a) = self.color;
         (((r as f32) * (1.0 - scale)) as u8,
          ((g as f32) * (1.0 - scale)) as u8,
          ((b as f32) * (1.0 - scale)) as u8,
-            a)*/
-        self.color
+         a)
     }
 
     #[inline]
@@ -265,13 +301,16 @@ impl Polygon {
             self.update_data();
         }
     }
-}
 
-fn clamp(p: &mut Point, (w, h): (u32, u32)) {
-    p.x = fmax(fmin(p.x, (w - 1) as f32), 0.0);
-    p.y = fmax(fmin(p.y, (h - 1) as f32), 0.0);
+    pub fn raw(mut self) -> CPolygon {
+        let (r, g, b, a) = self.color;
+        CPolygon {
+            num_vertices: self.vertices.len() as u32,
+            vertices: self.vertices.as_mut_ptr(),
+            r: r, g: g, b: b, a: a,
+        }
+    }
 }
-
 
 fn order_points(mut vertices: Vec<Point>) -> Vec<Point> {
     let (mut cx, mut cy) = (vertices[0].x, vertices[0].y);
@@ -291,18 +330,29 @@ fn order_points(mut vertices: Vec<Point>) -> Vec<Point> {
     vertices
 }
 
-#[inline(always)]
-fn fmin(a: f32, b: f32) -> f32 {
-    if a < b { a } else { b }
-}
-
-#[inline(always)]
-fn fmax(a: f32, b: f32) -> f32 {
-    if a < b { b } else { a }
-}
-
 impl fmt::Show for Encoding {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.polygons)
+    }
+}
+
+impl Encoding {
+    pub fn raw(self) -> CEncoding {
+        let (width, height) = self.dimensions;
+        let len = self.polygons.len() as u32;
+        let mut polygons: Vec<CPolygon> = self.polygons.into_iter().map(|p| p.raw()).collect();
+
+        CEncoding {
+            polygons: polygons.as_mut_ptr(),
+            num_polygons: len,
+            width: width,
+            height: height,
+        }
+    }
+}
+
+impl fmt::Show for RGB {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", (self.r, self.g, self.b))
     }
 }

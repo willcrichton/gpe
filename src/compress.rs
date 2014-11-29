@@ -62,8 +62,7 @@ impl Compressor {
             }
 
             population.push(Encoding { dimensions: self.dimensions,
-                                       polygons: polygons,
-                                       render: None });
+                                       polygons: polygons, });
         }
 
         population
