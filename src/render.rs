@@ -6,7 +6,7 @@ type BufColor = (u8, u8, u8);
 pub type Image = Vec<BufColor>;
 
 extern {
-    fn cuda_render(img: CEncoding, output: *mut RGB);
+    fn cuda_render(img: CEncoding, output: *mut RGB, antialias: bool);
 }
 
 pub fn render(img: &Encoding, antialias: bool) -> Image {
@@ -14,7 +14,7 @@ pub fn render(img: &Encoding, antialias: bool) -> Image {
     let mut imgbuf = Vec::from_fn((w * h) as uint, |_| RGB {r: 0, g: 0, b: 0});
 
     unsafe {
-        cuda_render(img.clone().raw(), imgbuf.as_mut_ptr());
+        cuda_render(img.clone().raw(), imgbuf.as_mut_ptr(), antialias);
     }
 
     return imgbuf.into_iter().map(|color| (color.r, color.g, color.b)).collect();
@@ -44,17 +44,4 @@ pub fn render(img: &Encoding, antialias: bool) -> Image {
     }
 
     imgbuf*/
-}
-
-#[inline(always)]
-fn add(old: u8, new: u8, alpha: u8) -> u8 {
-    let addend = (new as u32) * (alpha as u32) / 255;
-    if addend + (old as u32) > 255 { 255 } else { (addend as u8) + old }
-}
-
-#[inline(always)]
-fn blend(old_color: BufColor, new_color: Color) -> BufColor {
-    let (or, og, ob) = old_color;
-    let (nr, ng, nb, a) = new_color;
-    (add(or, nr, a), add(og, ng, a), add(ob, nb, a))
 }

@@ -19,6 +19,7 @@ fn main() {
     let out_dir = os::getenv("OUT_DIR").unwrap();
 
     // compile CUDA code into device relocatable code
+    // NOTE: if this isn't sm_20, it _WILL_ break
     run(Command::new("nvcc")
         .args(&["-arch=sm_20", "-dc", "src/render.cu", "-o"])
         .arg(format!("{}/render.o", out_dir)));

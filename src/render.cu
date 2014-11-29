@@ -41,12 +41,14 @@ __device__ __inline__ Color blend(Color old_color, Polygon poly) {
   return color;
 }
 
-__global__ void render_kernel(Encoding* img, Color* output) {
+__global__ void render_kernel(Encoding* img, Color* output, bool antialias) {
   int pixel = blockDim.x * blockIdx.x + threadIdx.x;
   if (pixel >= img->width * img->height) return;
 
   for (int i = 0; i < img->num_polygons; i++) {
     Polygon polygon = img->polygons[i];
+
+    // TODO: polygon containment test
     output[pixel] = blend(output[pixel], polygon);
   }
 }
@@ -82,7 +84,7 @@ Encoding* encoding_to_cuda(Encoding* img) {
   return cuda_img;
 }
 
-extern "C" void cuda_render(Encoding img, Color* output) {
+extern "C" void cuda_render(Encoding img, Color* output, bool antialias) {
   uint N = img.width * img.height;
   size_t size = N * sizeof(Color);
 
@@ -94,7 +96,7 @@ extern "C" void cuda_render(Encoding img, Color* output) {
 
   dim3 threadsPerBlock(256, 1);
   dim3 blocksPerGrid((N + threadsPerBlock.x - 1) / threadsPerBlock.x);
-  render_kernel<<<blocksPerGrid, threadsPerBlock>>>(cuda_img, cuda_output);
+  render_kernel<<<blocksPerGrid, threadsPerBlock>>>(cuda_img, cuda_output, antialias);
 
   cudaMemcpy(output, cuda_output, size, cudaMemcpyDeviceToHost);
 
