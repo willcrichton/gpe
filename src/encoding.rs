@@ -35,9 +35,11 @@ pub struct Polygon {
 
 #[repr(C)]
 pub struct CPolygon {
-    pub vertices: *mut Point,
-    pub num_vertices: u32,
-    pub r: u8, pub g: u8, pub b: u8, pub a: u8,
+    vertices: *mut Point,
+    num_vertices: u32,
+    r: u8, g: u8, b: u8, a: u8,
+    center: Point,
+    max_dist: f32,
 }
 
 #[deriving(Clone)]
@@ -48,10 +50,10 @@ pub struct Encoding {
 
 #[repr(C)]
 pub struct CEncoding {
-    pub polygons: *mut CPolygon,
-    pub num_polygons: u32,
-    pub width: u32,
-    pub height: u32,
+    polygons: *mut CPolygon,
+    num_polygons: u32,
+    width: u32,
+    height: u32,
 }
 
 #[inline(always)]
@@ -98,12 +100,15 @@ impl Point {
     }
 
     #[inline]
-    pub fn mutate(&mut self, (w, h): (u32, u32)) {
-        if should_mutate(MOVE_VERTEX_RATE) {
+    pub fn mutate(&mut self, (w, h): (u32, u32)) -> bool {
+        let mutated = should_mutate(MOVE_VERTEX_RATE);
+        if mutated {
             self.x += (random::<f32>() - 0.5) * MOVE_VERTEX_MAX;
             self.y += (random::<f32>() - 0.5) * MOVE_VERTEX_MAX;
             clamp(self, (w, h));
         }
+
+        mutated
     }
 }
 
@@ -136,7 +141,7 @@ impl fmt::Show for Point {
 
 impl fmt::Show for Polygon {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.vertices)
+        write!(f, "{{Color: {}, Vertices: {}}}\n", self.color, self.vertices)
     }
 }
 
@@ -155,9 +160,10 @@ impl Polygon {
         polygon
     }
 
-    pub fn random(compressor: &Compressor) -> Polygon {
+    pub fn random(compressor: &Compressor) -> Option<Polygon> {
         let (w, h) = compressor.dimensions;
-        let origin = Point {x: random::<f32>() * (w as f32), y: random::<f32>() * (h as f32)};
+        let origin = Point {x: random::<f32>() * (w as f32),
+                            y: random::<f32>() * (h as f32)};
 
         let mut vertices = vec![origin];
         for _ in range(0, VERTICES - 1) {
@@ -187,12 +193,17 @@ impl Polygon {
             }
         }
 
+        // polygon is invalid
+        if count == 0 {
+            return None;
+        }
+
         polygon.color = (polygon.rand_color((r / count) as u8),
                          polygon.rand_color((g / count) as u8),
                          polygon.rand_color((b / count) as u8),
                          random::<u8>() % 60 + 30);
 
-        polygon
+        Some(polygon)
     }
 
     fn update_data(&mut self) {
@@ -211,13 +222,13 @@ impl Polygon {
 
         let mut max_dist = 0.0;
         for vertex in self.vertices.iter() {
-            let vdist = vertex.distance(&center);
+            let vdist = vertex.distance_squared(&center);
             max_dist = if vdist > max_dist { vdist } else { max_dist };
         }
 
         // TODO: actual w, h
         let (mut minx, mut miny, mut maxx, mut maxy) =
-            (200 - 1, 220 - 1, 0, 0);
+            (200 - 1, 200 - 1, 0, 0);
 
         for vertex in self.vertices.iter() {
             minx = min(minx, vertex.x as u32);
@@ -286,7 +297,10 @@ impl Polygon {
         a = if should_mutate(CHANGE_COLOR_RATE) { random::<u8>() % 60 + 30 } else { a };
         self.color = (r, g, b, a);
 
-        self.vertices.iter_mut().map(|v| v.mutate(dimensions)).count();
+        if self.vertices.iter_mut().all(|v| v.mutate(dimensions)) {
+            self.vertices = order_points(self.vertices.clone());
+            self.update_data();
+        }
 
         if should_mutate(ADD_VERTEX_RATE) {
             let index = random::<uint>() % (self.vertices.len() - 1);
@@ -308,6 +322,8 @@ impl Polygon {
             num_vertices: self.vertices.len() as u32,
             vertices: self.vertices.as_mut_ptr(),
             r: r, g: g, b: b, a: a,
+            center: self.center,
+            max_dist: self.max_dist,
         }
     }
 }

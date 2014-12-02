@@ -34,7 +34,8 @@ pub fn compress(img: image::ImageBuf<image::Rgb<u8>>) -> Encoding {
 
 #[inline(always)]
 fn diff(a: u8, b: u8) -> uint {
-    (if a > b { (a - b) as uint } else { 2 * ((b - a) as uint) })
+    let diff = if a > b { (a - b) as uint } else { (b - a) as uint };
+    diff * diff
 }
 
 fn fitness((w, h): (u32, u32), base: Arc<Image>, individual: Arc<Option<Encoding>>) -> uint {
@@ -46,7 +47,7 @@ fn fitness((w, h): (u32, u32), base: Arc<Image>, individual: Arc<Option<Encoding
         let (br, bg, bb) = base[i as uint];
         let (nr, ng, nb) = new_render[i as uint];
 
-        score += diff(br, nr) + diff(bg, ng) + diff(bb, nb);
+        score += 2 * diff(br, nr) + 3 * diff(bg, ng) + diff(bb, nb);
     }
 
     score
@@ -57,8 +58,10 @@ impl Compressor {
         for _ in range(0, POPULATION_SIZE) {
             let mut polygons = Vec::new();
             for _ in range(0, INITIAL_POLYGONS) {
-                let polygon = Polygon::random(self);
-                polygons.push(polygon);
+                match Polygon::random(self) {
+                    Some(p) => { polygons.push(p); },
+                    None => {}
+                };
             }
 
             population.push(Encoding { dimensions: self.dimensions,
@@ -84,7 +87,10 @@ impl Compressor {
                 candidate.polygons = new_polygons;
 
                 if should_mutate(ADD_POLYGON_RATE) {
-                    candidate.polygons.push(Polygon::random(self));
+                    match Polygon::random(self) {
+                        Some(p) => { candidate.polygons.push(p); }
+                        None => {}
+                    }
                 }
 
                 new_population.push(Arc::new(Some(candidate)));
@@ -130,14 +136,8 @@ impl Compressor {
 
     pub fn max_score(&self) -> uint {
         let (w, h) = self.dimensions;
-        let mut max_score = 0u;
-        for i in range(0, w * h) {
-            let (r, g, b) = self.base[i as uint];
-            max_score += diff(r, 0);//max(diff(r, 0), diff(r, 255));
-            max_score += diff(g, 0);//max(diff(g, 0), diff(g, 255));
-            max_score += diff(b, 0);//max(diff(b, 0), diff(b, 255));
-        }
-
-        max_score
+        fitness((w, h),
+                self.base.clone(),
+                Arc::new(Some(Encoding { dimensions: (w, h), polygons: vec![] })))
     }
 }
