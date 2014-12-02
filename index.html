@@ -29,6 +29,17 @@
       </header>
       <section>
         <h2>
+<a id="checkpoint-2" class="anchor" href="#checkpoint-2" aria-hidden="true"><span class="octicon octicon-link"></span></a>Checkpoint 2</h2>
+
+<p>I've ported over the rendering to CUDA, although now that I've figured out Rust's foreign function interface, I might consider finally ending up just doing OpenGL, so there may be on final optimization pass to come on the rendering side.</p>
+
+<p>I ran the compressor on the following images with a 70% quality threshold and got the following images:</p>
+
+<p><img src="images/in4.png" alt=""><img src="images/out4.png" alt=""></p>
+
+<p><img src="images/in5.png" alt=""><img src="images/out5.png" alt=""></p>
+
+<h2>
 <a id="checkpoint-15" class="anchor" href="#checkpoint-15" aria-hidden="true"><span class="octicon octicon-link"></span></a>Checkpoint 1.5</h2>
 
 <p>In the last week, I rewrote the entire polygon renderer from scratch to use both radial gradients as well as antialiasing. I also added the basic polygon compressor. I've been working on:</p>
