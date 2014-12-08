@@ -18,6 +18,11 @@ typedef struct {
 } Point;
 
 typedef struct {
+  Point pos;
+  Color color;
+} Pixel;
+
+typedef struct {
   Point* points;
   u32 num_points;
   u8 r; u8 g; u8 b; u8 a;
@@ -28,10 +33,18 @@ typedef struct {
 typedef struct {
   Polygon* polygons;
   u32 num_polygons;
+  Pixel* pixels;
+  u32 num_pixels;
   u32 width;
   u32 height;
-  Polygon* dev_ptr;
+  Polygon* dev_poly_ptr;
+  Pixel* dev_pixel_ptr;
 } Encoding;
+
+typedef struct {
+  bool contains;
+  float distance;
+} QueryResult;
 
 __device__ __inline__ u8 add(u32 older, u32 newer, u32 alpha) {
   u32 addend = newer * alpha / 255;
@@ -51,27 +64,50 @@ __device__ __inline__ Color polycolor(Polygon poly, Point pt) {
   float y = pt.y - poly.center.y;
   float scale = 1.0 - (x * x + y * y) / poly.max_dist;
 
-  /*if (scale < 0.0 || scale >= 1.0) {
-    printf("scale %f, max_dist %f, point (%f, %f), center (%f, %f)\n", scale, poly.max_dist, pt.x, pt.y, poly.center.x, poly.center.y);
-    }*/
-
   color.r = poly.r * scale;
   color.g = poly.g * scale;
   color.b = poly.b * scale;
   return color;
 }
 
-__device__ bool query(Point pt, Polygon poly, bool antialias) {
-  bool inside = false;
+__device__ __inline__ float distance_squared(Point a, Point b) {
+  float dx = a.x - b.x, dy = a.y - b.y;
+  return dx * dx + dy * dy;
+}
+
+__device__ QueryResult query(Point pt, Polygon poly, bool antialias) {
+  QueryResult result;
+  result.contains = false;
+  result.distance = 1000000.0;
   for (int i = 0; i < poly.num_points; i++) {
     Point a = poly.points[i], b = poly.points[(i + 1) % poly.num_points];
     if ((a.y > pt.y) != (b.y > pt.y) &&
         (pt.x < (b.x - a.x) * (pt.y - a.y) / (b.y - a.y) + a.x)) {
-      inside = !inside;
+      result.contains = !result.contains;
+    }
+
+    if (antialias) {
+      float mag = distance_squared(a, b);
+      float t = ((pt.x - a.x) * (b.x - a.x) + (pt.y - a.y) * (b.y - a.y)) / mag;
+      float dist;
+      if (t < 0.0) {
+        dist = distance_squared(pt, a);
+      } else if (t > 1.0) {
+        dist = distance_squared(pt, b);
+      } else {
+        Point ba;
+        ba.x = a.x + (b.x - a.x) * t;
+        ba.y = a.y + (b.y - a.y) * t;
+        dist = distance_squared(pt, ba);
+      }
+
+      if (dist < result.distance) {
+        result.distance = dist;
+      }
     }
   }
 
-  return inside;
+  return result;
 }
 
 __global__ void render_kernel(Encoding* img, Color* output, bool antialias) {
@@ -83,8 +119,23 @@ __global__ void render_kernel(Encoding* img, Color* output, bool antialias) {
   for (int i = 0; i < img->num_polygons; i++) {
     Polygon polygon = img->polygons[i];
 
-    if (query(pt, polygon, antialias)) {
-      blend(&output[pixel], &polycolor(polygon, pt), polygon.a);
+    QueryResult result = query(pt, polygon, antialias);
+    if (result.contains || (antialias && result.distance < 4.0)) {
+      float alpha = polygon.a;
+      if (!result.contains) {
+        alpha /= ((1.0 + result.distance) * (1.0 + result.distance));
+      }
+
+      blend(&output[pixel], &polycolor(polygon, pt), alpha);
+    }
+  }
+
+  for (int i = 0; i < img->num_pixels; i++) {
+    Pixel p = img->pixels[i];
+    if (p.pos.x == pt.x && p.pos.y == pt.y) {
+      output[pixel].r = p.color.r;
+      output[pixel].g = p.color.g;
+      output[pixel].b = p.color.b;
     }
   }
 }
@@ -121,16 +172,30 @@ Polygon* polygons_to_cuda(Encoding* img) {
   return cuda_polygons;
 }
 
+Pixel* pixels_to_cuda(Encoding *img) {
+  Pixel* cuda_pixels;
+  cudaMalloc(&cuda_pixels, sizeof(Pixel) * img->num_pixels);
+  cudaMemcpy(cuda_pixels, img->pixels, sizeof(Pixel) * img->num_pixels, cudaMemcpyHostToDevice);
+
+  return cuda_pixels;
+}
+
 Encoding* encoding_to_cuda(Encoding* img) {
   Encoding* cuda_img;
   cudaMalloc(&cuda_img, sizeof(Encoding));
 
-  Polygon* tmp = img->polygons;
+  Polygon* poly_tmp = img->polygons;
   img->polygons = polygons_to_cuda(img);
+
+  Pixel* pixel_tmp = img->pixels;
+  img->pixels = pixels_to_cuda(img);
+
   cudaMemcpy(cuda_img, img, sizeof(Encoding), cudaMemcpyHostToDevice);
 
-  img->dev_ptr = img->polygons;
-  img->polygons = tmp;
+  img->dev_pixel_ptr = img->pixels;
+  img->dev_poly_ptr = img->polygons;
+  img->polygons = poly_tmp;
+  img->pixels = pixel_tmp;
   return cuda_img;
 }
 
@@ -139,7 +204,8 @@ void encoding_free(Encoding* img) {
     cudaFree(img->polygons[i].points);
   }
 
-  cudaFree(img->dev_ptr);
+  cudaFree(img->dev_pixel_ptr);
+  cudaFree(img->dev_poly_ptr);
 }
 
 extern "C" void cuda_render(Encoding img, Color* output, bool antialias) {

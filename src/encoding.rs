@@ -16,11 +16,19 @@ pub struct Point {
 
 pub type Color = (u8, u8, u8, u8);
 
+#[deriving(Clone)]
 #[repr(C)]
 pub struct RGB {
     pub r: u8,
     pub g: u8,
     pub b: u8,
+}
+
+#[deriving(Clone)]
+#[repr(C)]
+pub struct Pixel {
+    pub pos: Point,
+    pub color: RGB,
 }
 
 #[deriving(Clone)]
@@ -46,12 +54,15 @@ pub struct CPolygon {
 pub struct Encoding {
     pub polygons: Vec<Polygon>,
     pub dimensions: (u32, u32),
+    pub pixels: Vec<Pixel>,
 }
 
 #[repr(C)]
 pub struct CEncoding {
     polygons: *mut CPolygon,
     num_polygons: u32,
+    pixels: *mut Pixel,
+    num_pixels: u32,
     width: u32,
     height: u32,
 }
@@ -73,21 +84,6 @@ fn clamp(p: &mut Point, (w, h): (u32, u32)) {
 }
 
 impl Point {
-    #[inline(always)]
-    pub fn length_squared(&self) -> f32 {
-        self.x * self.x + self.y * self.y
-    }
-
-    #[inline(always)]
-    pub fn length(&self) -> f32 {
-        self.length_squared().sqrt()
-    }
-
-    #[inline(always)]
-    pub fn distance(&self, other: &Point) -> f32 {
-        (*self - *other).length()
-    }
-
     #[inline(always)]
     pub fn distance_squared(&self, other: &Point) -> f32 {
         let (x, y) = (self.x - other.x, self.y - other.y);
@@ -271,16 +267,6 @@ impl Polygon {
     }
 
     #[inline]
-    pub fn color(&self, p: Point) -> Color {
-        let scale = p.distance(&self.center) / self.max_dist;
-        let (r, g, b, a) = self.color;
-        (((r as f32) * (1.0 - scale)) as u8,
-         ((g as f32) * (1.0 - scale)) as u8,
-         ((b as f32) * (1.0 - scale)) as u8,
-         a)
-    }
-
-    #[inline]
     fn rand_color(&self, base: u8) -> u8 {
         if should_mutate(CHANGE_COLOR_RATE) {
             min(max((base as f32 + (random::<f32>() - 0.5) * CHANGE_COLOR_MAX) as uint, 0), 255) as u8
@@ -353,17 +339,30 @@ impl fmt::Show for Encoding {
 }
 
 impl Encoding {
-    pub fn raw(self) -> CEncoding {
+    pub fn raw(mut self) -> CEncoding {
         let (width, height) = self.dimensions;
-        let len = self.polygons.len() as u32;
+        let (poly_len, pixel_len) = (self.polygons.len() as u32, self.pixels.len() as u32);
         let mut polygons: Vec<CPolygon> = self.polygons.into_iter().map(|p| p.raw()).collect();
 
         CEncoding {
             polygons: polygons.as_mut_ptr(),
-            num_polygons: len,
+            num_polygons: poly_len,
+            pixels: self.pixels.as_mut_ptr(),
+            num_pixels: pixel_len,
             width: width,
             height: height,
         }
+    }
+
+    pub fn size(&self) -> uint {
+        let mut size = 16; // width + height + num_pixels + num_polygons
+        size += self.pixels.len() * (3 + 2); // color + position
+
+        for polygon in self.polygons.iter() {
+            size += 3 + 2 * polygon.vertices.len();
+        }
+
+        size
     }
 }
 

@@ -1,10 +1,11 @@
 extern crate image;
+extern crate time;
 
 use std::sync::{Arc, TaskPool};
 use std::rand::random;
 
 use image::GenericImage;
-use encoding::{Encoding, Polygon};
+use encoding::{Encoding, Polygon, Pixel, Point, RGB};
 use render::{render, Image};
 use constants::*;
 
@@ -21,14 +22,29 @@ pub fn compress(img: image::ImageBuf<image::Rgb<u8>>) -> Encoding {
     let max_score = compressor.max_score();
 
     let mut iteration = 0u;
+    let mut cur_time = time::get_time();
+    let mut avg_time = 0.0;
     loop {
         let (new_population, min_fitness, index) = compressor.mutate(population);
+
+        iteration += 1;
+        let new_time = time::get_time();
+        let diff = (new_time.nsec - cur_time.nsec) / 1000000;
+
+        let iter_f = iteration as f32;
+        avg_time = avg_time * (iter_f - 1.0) / iter_f +
+            (if diff < 0 { avg_time } else { diff as f32 }) / iter_f;
+        cur_time = new_time;
+
         population = new_population;
         let current_score = 1.0 - (min_fitness as f32 / max_score as f32);
-        info!("Iteration {} (size {}, score {})", iteration,
-              population[0].polygons.len(), current_score);
-        if current_score >= ::threshold() { return population[index].clone(); }
-        iteration += 1;
+        info!("Iteration {} (size {}, score {}, time {}ms)", iteration,
+              population[0].polygons.len(), current_score, diff);
+        if current_score >= ::threshold() {
+            info!("Average time: {}ms", avg_time);
+            return if !::should_fix() { population[index].clone() }
+            else { compressor.fix_pixels(population[index].clone()) }
+        }
     }
 }
 
@@ -54,9 +70,9 @@ fn fitness((w, h): (u32, u32), base: Arc<Image>, individual: Arc<Option<Encoding
 }
 impl Compressor {
     fn create_population(&self) -> Vec<Encoding> {
-        let mut population = Vec::new();
+        let mut population = vec![];
         for _ in range(0, POPULATION_SIZE) {
-            let mut polygons = Vec::new();
+            let mut polygons = vec![];
             for _ in range(0, INITIAL_POLYGONS) {
                 match Polygon::random(self) {
                     Some(p) => { polygons.push(p); },
@@ -65,19 +81,20 @@ impl Compressor {
             }
 
             population.push(Encoding { dimensions: self.dimensions,
-                                       polygons: polygons, });
+                                       polygons: polygons,
+                                       pixels: vec![] });
         }
 
         population
     }
 
     fn mutate(&self, population: Vec<Encoding>) -> (Vec<Encoding>, uint, uint) {
-        let mut new_population = Vec::new();
+        let mut new_population = vec![];
         for candidate in population.into_iter() {
             for _ in range(0, MUTATIONS) {
                 let mut candidate = candidate.clone();
 
-                let mut new_polygons = Vec::new();
+                let mut new_polygons = vec![];
                 for mut polygon in candidate.polygons.into_iter() {
                     if should_mutate(REMOVE_POLYGON_RATE) { continue; }
                     polygon.mutate(self.dimensions);
@@ -112,14 +129,14 @@ impl Compressor {
             tx.send((self.dimensions, self.base.clone(), i, individual.clone()));
         }
 
-        let mut population_fitness = Vec::new();
+        let mut population_fitness = vec![];
         for _ in new_population.iter() {
             population_fitness.push(rmaster.recv());
         }
 
         population_fitness.sort_by(|&(_, a), &(_, b)| a.cmp(&b));
 
-        let mut filtered_population = Vec::new();
+        let mut filtered_population = vec![];
         let (mut min_fitness, mut min_individual) = (population_fitness[0].val1(), 0);
         for i in range(0, POPULATION_SIZE) {
             let (index, fitvalue) = population_fitness[i as uint];
@@ -136,8 +153,37 @@ impl Compressor {
 
     pub fn max_score(&self) -> uint {
         let (w, h) = self.dimensions;
-        fitness((w, h),
-                self.base.clone(),
-                Arc::new(Some(Encoding { dimensions: (w, h), polygons: vec![] })))
+        fitness(
+            (w, h),
+            self.base.clone(),
+            Arc::new(Some(Encoding {
+                dimensions: (w, h),
+                polygons: vec![],
+                pixels: vec![] })))
+    }
+
+
+    pub fn fix_pixels(&self, mut img: Encoding) -> Encoding {
+        let (w, h) = img.dimensions;
+        let new_render = render(&img, true);
+        for y in range(0, h) {
+            for x in range(0, w) {
+                let i = (y * w + x) as uint;
+                let (br, bg, bb) = self.base[i];
+                let (nr, ng, nb) = new_render[i];
+                let score = 2 * diff(br, nr) + 3 * diff(bg, ng) + diff(bb, nb);
+
+                if score > PIXEL_FIX_THRESHOLD {
+                    img.pixels.push(Pixel {
+                        pos: Point { x: x as f32, y: y as f32 },
+                        color: RGB { r: br, g: bg, b: bb }
+                    });
+                }
+            }
+        }
+
+        info!("Fixed {} pixels", img.pixels.len());
+
+        img
     }
 }

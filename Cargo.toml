@@ -13,3 +13,6 @@ opt-level = 2
 
 [dependencies.image]
 git = "https://github.com/PistonDevelopers/image"
+
+[dependencies]
+time = "*"

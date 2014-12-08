@@ -1,6 +1,7 @@
 use std::rand::random;
 
 pub static FITNESS_THRESHOLD: f32 = 0.65;
+pub static PIXEL_FIX_THRESHOLD: uint = 500;
 pub static INITIAL_POLYGONS: uint = 1;
 pub static WORKERS: uint = 16;
 pub static MUTATIONS: uint = 5;

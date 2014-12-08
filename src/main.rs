@@ -1,6 +1,7 @@
 #![feature(globs)]
 #![feature(phase)]
 #![feature(default_type_params)]
+#![allow(deprecated)]
 #[phase(plugin, link)] extern crate log;
 
 extern crate getopts;
@@ -8,6 +9,8 @@ extern crate image;
 
 use std::os;
 use std::io::File;
+use std::io::fs::PathExtensions;
+
 use image::GenericImage;
 
 mod compress;
@@ -16,7 +19,8 @@ mod encoding;
 mod constants;
 mod fnvhasher;
 
-local_data_key!(THRESHOLD: f32)
+static mut THRESHOLD: f32 = 0.0;
+static mut FIX: bool = false;
 
 fn main() {
     let args = os::args();
@@ -39,9 +43,14 @@ fn main() {
         Some(s) => from_str(s.as_slice()).unwrap(),
         None => constants::FITNESS_THRESHOLD
     };
-    THRESHOLD.replace(Some(threshold));
+    unsafe { THRESHOLD = threshold; }
 
-    let (compressed, w, h) = match image::open(&Path::new(matches.free[0].clone())).unwrap() {
+    if matches.opt_present("f") {
+        unsafe { FIX = true; }
+    }
+
+    let input_path = Path::new(matches.free[0].clone());
+    let (compressed, w, h) = match image::open(&input_path).unwrap() {
         image::ImageRgb8(buf) => {
             let (w, h) = buf.dimensions();
             (compress::compress(buf), w, h)
@@ -49,8 +58,11 @@ fn main() {
         _ => panic!("image must be RGB")
     };
 
-    println!("{}", compressed);
     let output = render::render(&compressed, true);
+
+    let (in_size, out_size) = (input_path.stat().unwrap().size, compressed.size());
+    let percentage = (out_size as f32) / (in_size as f32) * 100.0;
+    println!("{}% of original size ({} input, {} output)", percentage, in_size, out_size);
 
     let save_file = File::create(&Path::new("out.png")).unwrap();
     let pixels = output.into_iter().map(|(r, g, b)| image::Rgb(r, g, b)).collect();
@@ -62,6 +74,7 @@ fn opts() -> Vec<getopts::OptGroup> {
     use getopts::{optflag, optopt};
     vec![
         optflag("h", "help", "show this help message"),
+        optflag("f", "fix", "fix bad pixels"),
         optopt("t", "threshold", "terminate after reaching this fitness threshold", "0.75"),
         ]
 }
@@ -76,5 +89,9 @@ fn usage(argv0: &str, err: Option<&str>) {
 }
 
 pub fn threshold() -> f32 {
-    *THRESHOLD.get().unwrap()
+    unsafe { THRESHOLD }
+}
+
+pub fn should_fix() -> bool {
+    unsafe { FIX }
 }
