@@ -48,7 +48,7 @@ typedef struct {
 
 __device__ __inline__ u8 add(u32 older, u32 newer, u32 alpha) {
   u32 addend = newer * alpha / 255;
-  if (addend + older > 255) { /*printf("%d, %d, %d\n", older, newer, alpha);*/ return 255; }
+  if (addend + older > 255) { return 255; }
   else { return addend + older; }
 }
 
@@ -60,13 +60,13 @@ __device__ __inline__ void blend(Color* old_color, Color* new_color, u32 alpha) 
 
 __device__ __inline__ Color polycolor(Polygon poly, Point pt) {
   Color color;
-  float x = pt.x - poly.center.x;
+  /*float x = pt.x - poly.center.x;
   float y = pt.y - poly.center.y;
-  float scale = 1.0 - (x * x + y * y) / poly.max_dist;
+  float scale = 1.0 - (x * x + y * y) / poly.max_dist;*/
 
-  color.r = poly.r * scale;
-  color.g = poly.g * scale;
-  color.b = poly.b * scale;
+  color.r = poly.r;// * scale;
+  color.g = poly.g;// * scale;
+  color.b = poly.b;// * scale;
   return color;
 }
 
@@ -110,7 +110,7 @@ __device__ QueryResult query(Point pt, Polygon poly, bool antialias) {
   return result;
 }
 
-__global__ void render_kernel(Encoding* img, Color* output, bool antialias) {
+__global__ void render_kernel(Encoding* img, Color* tmp, bool antialias) {
   int pixel = blockDim.x * blockIdx.x + threadIdx.x;
   if (pixel >= img->width * img->height) return;
 
@@ -126,18 +126,52 @@ __global__ void render_kernel(Encoding* img, Color* output, bool antialias) {
         alpha /= ((1.0 + result.distance) * (1.0 + result.distance));
       }
 
-      blend(&output[pixel], &polycolor(polygon, pt), alpha);
+      blend(&tmp[pixel], &polycolor(polygon, pt), alpha);
     }
   }
 
   for (int i = 0; i < img->num_pixels; i++) {
     Pixel p = img->pixels[i];
     if (p.pos.x == pt.x && p.pos.y == pt.y) {
-      output[pixel].r = p.color.r;
-      output[pixel].g = p.color.g;
-      output[pixel].b = p.color.b;
+      tmp[pixel].r = p.color.r;
+      tmp[pixel].g = p.color.g;
+      tmp[pixel].b = p.color.b;
     }
   }
+}
+
+__global__ void blur_kernel(Encoding *img, Color* tmp, Color* output) {
+  int pixel = blockDim.x * blockIdx.x + threadIdx.x;
+  if (pixel >= img->width * img->height) return;
+
+  int x = pixel % img->width, y = pixel / img->width;
+  int N = 9;
+  int surrounding[][2] = { {x - 1, y - 1}, {x, y - 1}, {x + 1, y - 1},
+                           {x - 1, y},     {x, y},     {x + 1, y},
+                           {x - 1, y + 1}, {x, y + 1}, {x + 1, y + 1} };
+  //int N = 4;
+  //int surrounding[][2] = { {x, y - 1}, {x, y + 1}, {x + 1, y}, {x - 1, y}, {x, y} };
+
+  int ar = 0, ag = 0, ab = 0;
+  int num_valid = 0;
+  for (int i = 0; i < N; i++) {
+    int* pt = surrounding[i];
+    if (pt[0] < 0 || pt[0] >= img->width ||
+        pt[1] < 0 || pt[1] >= img->height) {
+      continue;
+    }
+
+    num_valid++;
+
+    Color color = tmp[pt[1] * img->width + pt[0]];
+    ar += color.r;
+    ag += color.g;
+    ab += color.b;
+  }
+
+  output[pixel].r = ar / num_valid;
+  output[pixel].g = ag / num_valid;
+  output[pixel].b = ab / num_valid;
 }
 
 Point* points_to_cuda(Polygon polygon) {
@@ -212,19 +246,24 @@ extern "C" void cuda_render(Encoding img, Color* output, bool antialias) {
   u32 N = img.width * img.height;
   size_t size = N * sizeof(Color);
 
+  Color* cuda_tmp;
+  cudaMalloc(&cuda_tmp, size);
+  cudaMemcpy(cuda_tmp, output, size, cudaMemcpyHostToDevice);
+
   Color* cuda_output;
   cudaMalloc(&cuda_output, size);
-  cudaMemcpy(cuda_output, output, size, cudaMemcpyHostToDevice);
 
   Encoding* cuda_img = encoding_to_cuda(&img);
 
   dim3 threadsPerBlock(THREADS_PER_BLOCK, 1);
   dim3 blocksPerGrid((N + threadsPerBlock.x - 1) / threadsPerBlock.x);
-  render_kernel<<<blocksPerGrid, threadsPerBlock>>>(cuda_img, cuda_output, antialias);
+  render_kernel<<<blocksPerGrid, threadsPerBlock>>>(cuda_img, cuda_tmp, antialias);
+  //blur_kernel<<<blocksPerGrid, threadsPerBlock>>>(cuda_img, cuda_tmp, cuda_output);
 
-  cudaMemcpy(output, cuda_output, size, cudaMemcpyDeviceToHost);
+  cudaMemcpy(output, cuda_tmp, size, cudaMemcpyDeviceToHost);
 
   encoding_free(&img);
   cudaFree(cuda_img);
   cudaFree(cuda_output);
+  cudaFree(cuda_tmp);
 }

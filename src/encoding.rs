@@ -129,6 +129,19 @@ impl Mul<f32, Point> for Point {
     }
 }
 
+impl Div<f32, Point> for Point {
+    #[inline(always)]
+    fn div(&self, constant: &f32) -> Point {
+        Point {x: self.x / *constant, y: self.y / *constant}
+    }
+}
+
+impl Equiv<Point> for Point {
+    fn equiv(&self, other: &Point) -> bool {
+        (self.x - other.x).abs() < 0.001 && (self.y - other.y).abs() < 0.001
+    }
+}
+
 impl fmt::Show for Point {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "({}, {})", self.x, self.y)
@@ -163,11 +176,13 @@ impl Polygon {
 
         let mut vertices = vec![origin];
         for _ in range(0, VERTICES - 1) {
-            let mut vtx = origin + Point{x: (random::<f32>() - 0.5) * (w as f32),
-                                     y: (random::<f32>() - 0.5) * (h as f32)};
+            let mut vtx = origin + Point{x: (random::<f32>() - 0.5) * POLY_SIZE_INIT,
+                                     y: (random::<f32>() - 0.5) * POLY_SIZE_INIT};
             clamp(&mut vtx, (w, h));
             vertices.push(vtx);
         }
+
+        println!("points {}, hull {}", vertices, order_points(vertices.clone()));
 
         let mut polygon = Polygon::new(order_points(vertices), (0, 0, 0, 0));
         let (mut r, mut g, mut b) = (0, 0, 0);
@@ -212,9 +227,9 @@ impl Polygon {
         let mut center = self.vertices[0];
         for vertex in self.vertices.iter() {
             center = center + *vertex;
-            center.x /= 2.0;
-            center.y /= 2.0;
         }
+
+        center = center / self.vertices.len() as f32;
 
         let mut max_dist = 0.0;
         for vertex in self.vertices.iter() {
@@ -315,13 +330,13 @@ impl Polygon {
 }
 
 fn order_points(mut vertices: Vec<Point>) -> Vec<Point> {
-    let (mut cx, mut cy) = (vertices[0].x, vertices[0].y);
+    /*let mut center = Point {x: 0.0, y: 0.0};
 
     for vertex in vertices.iter() {
-        cx = (cx + vertex.x) / 2.0;
-        cy = (cy + vertex.y) / 2.0;
+        center = center + *vertex / (vertices.len() as f32);
     }
 
+    let (cx, cy) = (center.x, center.y);
     vertices.sort_by(|u, v| {
         let det = (u.x - cx) * (v.y - cy) - (v.x - cx) * (u.y - cy);
         if det < 0.0 { Less }
@@ -329,7 +344,35 @@ fn order_points(mut vertices: Vec<Point>) -> Vec<Point> {
         else { Equal }
     });
 
-    vertices
+    vertices*/
+
+    vertices.sort_by(|u, v| {
+        if u.x < v.x { Less }
+        else { Greater }
+    });
+
+    let mut hull = vec![];
+    let mut point_on_hull = vertices[0];
+
+    loop {
+        hull.push(point_on_hull);
+
+        let mut endpoint = vertices[0];
+        for vertex in vertices.iter() {
+            // A = endpoint, B = point_on_hull, S[j] = vertex
+            let line_side = (point_on_hull.x - endpoint.x) * (vertex.y - endpoint.y) -
+                (point_on_hull.y - endpoint.y) * (vertex.x - endpoint.x);
+            if endpoint.equiv(&point_on_hull) || line_side < 0.0 {
+                endpoint = *vertex;
+            }
+        }
+
+        point_on_hull = endpoint;
+
+        if endpoint.equiv(&hull[0]) { break; }
+    }
+
+    hull
 }
 
 impl fmt::Show for Encoding {

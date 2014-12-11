@@ -59,6 +59,7 @@ fn main() {
     };
 
     let output = render::render(&compressed, true);
+    println!("Compressed {}", compressed);
 
     let (in_size, out_size) = (input_path.stat().unwrap().size, compressed.size());
     let percentage = (out_size as f32) / (in_size as f32) * 100.0;

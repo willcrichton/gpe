@@ -1,12 +1,13 @@
 use std::rand::random;
 
-pub static FITNESS_THRESHOLD: f32 = 0.65;
+pub static FITNESS_THRESHOLD: f32 = 0.95;
 pub static PIXEL_FIX_THRESHOLD: uint = 500;
 pub static INITIAL_POLYGONS: uint = 1;
 pub static WORKERS: uint = 16;
-pub static MUTATIONS: uint = 5;
-pub static POPULATION_SIZE: uint = 10;
-pub static VERTICES: uint = 3;
+pub static MUTATIONS: uint = 4;
+pub static POPULATION_SIZE: uint = 1;
+pub static VERTICES: uint = 6;
+pub static POLY_SIZE_INIT: f32 = 150.0;
 
 pub static ADD_POLYGON_RATE: uint = 50;
 pub static REMOVE_POLYGON_RATE: uint = 120;
