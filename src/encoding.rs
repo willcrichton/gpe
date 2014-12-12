@@ -144,6 +144,59 @@ impl Polygon {
 
     pub fn random(compressor: &Compressor) -> Option<Polygon> {
         let (w, h) = compressor.dimensions;
+        let mut vertices = vec![];
+
+        if random::<f32>() < 0.7 && compressor.error.iter().fold(0, |b, a| b + *a) > 0 {
+            let mut regions: Vec<(uint, &uint)> = compressor.error.iter().enumerate().collect();
+            regions.sort_by(|&(_, a), &(_, b)| b.cmp(a));
+            let (region, _) = regions[random::<uint>() % 8];
+
+            let (x, y) = ((region % 8) as f32 * 25.0, (region / 8) as f32 * 25.0);
+
+            let mut eligible_pts = vec![];
+            for &(pt, _, _) in compressor.edges.iter() {
+                if pt.x >= x && pt.x <= x + 25.0 && pt.y >= y && pt.y <= y + 25.0 {
+                    eligible_pts.push(pt);
+                }
+            }
+
+            let origin = if eligible_pts.len() == 0 || random::<f32>() < 0.5 {
+                Point {x: (x as f32) * 25.0 + random::<f32>() * 25.0,
+                       y: (y as f32) * 25.0 + random::<f32>() * 25.0}
+            } else {
+                eligible_pts[random::<uint>() % eligible_pts.len()]
+            };
+
+            let mut edges = compressor.edges.clone();
+            edges.sort_by(|&(a, _, _), &(b, _, _)| {
+                if a.distance_squared(&origin) < b.distance_squared(&origin) { Less }
+                else { Greater }
+            });
+
+            vertices.push(origin);
+            if random::<f32>() < 0.5 {
+                for _ in range(0, VERTICES - 1) {
+                    let mut vtx = origin + Point{x: (random::<f32>() - 0.5) * POLY_SIZE_INIT,
+                                                 y: (random::<f32>() - 0.5) * POLY_SIZE_INIT};
+                    clamp(&mut vtx, (w, h));
+                    vertices.push(vtx);
+                }
+            } else {
+                for _ in range(0, VERTICES - 1) {
+                    let (pt, _ , _) = edges[random::<uint>() % (min(50, edges.len()))];
+                    vertices.push(pt);
+                }
+            }
+
+        } else {
+            let len = compressor.edges.len();
+            for _ in range(0, VERTICES) {
+                let (vtx, _, _) = compressor.edges[random::<uint>() % len];
+                vertices.push(vtx);
+            }
+        }
+
+        let (w, h) = compressor.dimensions;
         let origin = if compressor.error.iter().fold(0, |b, a| b + *a) > 0 {
             let mut regions: Vec<(uint, &uint)> = compressor.error.iter().enumerate().collect();
             regions.sort_by(|&(_, a), &(_, b)| b.cmp(a));
@@ -162,7 +215,7 @@ impl Polygon {
         let mut vertices = vec![origin];
         for _ in range(0, VERTICES - 1) {
             let mut vtx = origin + Point{x: (random::<f32>() - 0.5) * POLY_SIZE_INIT,
-                                     y: (random::<f32>() - 0.5) * POLY_SIZE_INIT};
+                                         y: (random::<f32>() - 0.5) * POLY_SIZE_INIT};
             clamp(&mut vtx, (w, h));
             vertices.push(vtx);
         }
@@ -175,6 +228,8 @@ impl Polygon {
         // weight color towards expected color in base
         for y in range_inclusive(bbmin.y as u32, bbmax.y as u32) {
             for x in range_inclusive(bbmin.x as u32, bbmax.x as u32) {
+                if x >= w || y >= h { continue }
+
                 let pt = Point {x: x as f32, y: y as f32};
                 let (contains, _) = polygon.query(&pt, false);
                 let (br, bg, bb) = compressor.base[((y * w) + x) as uint];

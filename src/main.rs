@@ -12,6 +12,7 @@ use std::io::File;
 use std::io::fs::PathExtensions;
 
 use image::GenericImage;
+use encoding::Encoding;
 
 mod compress;
 mod render;
@@ -21,7 +22,6 @@ mod fnvhasher;
 
 static mut THRESHOLD: f32 = 0.0;
 static mut ITERATIONS: uint = 0;
-static mut FIX: bool = false;
 
 fn main() {
     let args = os::args();
@@ -52,12 +52,8 @@ fn main() {
     };
     unsafe { ITERATIONS = iterations; }
 
-    if matches.opt_present("f") {
-        unsafe { FIX = true; }
-    }
-
     let input_path = Path::new(matches.free[0].clone());
-    let (compressed, w, h) = match image::open(&input_path).unwrap() {
+    let ((fixed, not_fixed), w, h) = match image::open(&input_path).unwrap() {
         image::ImageRgb8(buf) => {
             let (w, h) = buf.dimensions();
             (compress::compress(buf), w, h)
@@ -65,14 +61,17 @@ fn main() {
         _ => panic!("image must be RGB")
     };
 
-    let output = render::render(&compressed, true);
-    println!("Compressed {}", compressed);
-
-    let (in_size, out_size) = (input_path.stat().unwrap().size, compressed.size());
+    let (in_size, out_size) = (input_path.stat().unwrap().size, fixed.size());
     let percentage = (out_size as f32) / (in_size as f32) * 100.0;
-    println!("{}% of original size ({} input, {} output)", percentage, in_size, out_size);
+    println!("{}% of original size ({} input, {} output, {} if not fixed)", percentage, in_size, out_size, not_fixed.size());
 
-    let save_file = File::create(&Path::new("out.png")).unwrap();
+    save_img(fixed, true, w, h);
+    save_img(not_fixed, false, w, h);
+}
+
+fn save_img(img: Encoding, fixed: bool, w: u32, h: u32) {
+    let output = render::render(&img, true);
+    let save_file = File::create(&Path::new(if fixed { "out.fixed.png" } else { "out.nofixed.png" })).unwrap();
     let pixels = output.into_iter().map(|(r, g, b)| image::Rgb(r, g, b)).collect();
     let buf = image::ImageBuf::from_pixels(pixels, w, h);
     let _ = image::ImageRgb8(buf).save(save_file, image::PNG);
@@ -82,7 +81,6 @@ fn opts() -> Vec<getopts::OptGroup> {
     use getopts::{optflag, optopt};
     vec![
         optflag("h", "help", "show this help message"),
-        optflag("f", "fix", "fix bad pixels"),
         optopt("t", "threshold", "terminate after reaching this fitness threshold", "0.75"),
         optopt("i", "iterations", "terminate after doing this many iterations", "1000"),
         ]
@@ -99,10 +97,6 @@ fn usage(argv0: &str, err: Option<&str>) {
 
 pub fn threshold() -> f32 {
     unsafe { THRESHOLD }
-}
-
-pub fn should_fix() -> bool {
-    unsafe { FIX }
 }
 
 pub fn iterations() -> uint {

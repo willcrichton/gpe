@@ -21,7 +21,7 @@ pub fn render(img: &Encoding, antialias: bool) -> Image {
                 let pt = Point {x: x as f32, y: y as f32};
                 let (contains, dist) = polygon.query(&pt, antialias);
 
-                if contains || (antialias && dist < 4.0 /*+ fmin(1.0 / polygon.blur, 5.0)*/) {
+                if contains || (antialias && dist < 3.0 /*+ fmin(1.0 / polygon.blur, 5.0)*/) {
                     let mut new_color = polygon.color;
 
                     if !contains {

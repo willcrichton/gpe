@@ -6,6 +6,7 @@ use std::rand::random;
 use std::io::File;
 use std::num::Float;
 use std::num::FloatMath;
+use std::cmp::max;
 
 use image::{GenericImage, imageops, ImageBuf};
 use encoding::{Encoding, Polygon, Pixel, Point, fmin, fmax};
@@ -17,9 +18,10 @@ pub struct Compressor {
     pub base: Arc<Image>,
     pub downsampled: Arc<Image>,
     pub error: Vec<uint>,
+    pub edges: Vec<(Point, f32, f32)>,
 }
 
-pub fn compress(img: image::ImageBuf<image::Rgb<u8>>) -> Encoding {
+pub fn compress(img: image::ImageBuf<image::Rgb<u8>>) -> (Encoding, Encoding) {
     let dimensions = img.dimensions();
     let downsampled = Arc::new(imageops::resize(&img, 50, 50, image::Nearest)
                                .into_vec().into_iter().map(|p| p.channels()).collect());
@@ -27,7 +29,8 @@ pub fn compress(img: image::ImageBuf<image::Rgb<u8>>) -> Encoding {
     let mut compressor = Compressor { dimensions: dimensions,
                                       base: base,
                                       downsampled: downsampled,
-                                      error: Vec::new() };
+                                      error: vec![],
+                                      edges: vec![], };
     compressor.detect_edges();
     let mut population = compressor.create_population();
     let max_score = compressor.max_score();
@@ -62,8 +65,7 @@ pub fn compress(img: image::ImageBuf<image::Rgb<u8>>) -> Encoding {
 
         if current_score >= ::threshold() || (max_iters != 0 && iteration >= max_iters) {
             info!("Average time: {}ms", avg_time);
-            return if !::should_fix() { population[index].clone() }
-            else { compressor.fix_pixels(population[index].clone()) }
+            return (compressor.fix_pixels(population[index].clone()), population[index].clone());
         }
     }
 }
@@ -129,6 +131,7 @@ impl Compressor {
 
     fn mutate(&self, population: Vec<Encoding>) -> (Vec<Encoding>, uint, uint) {
         let mut new_population = vec![];
+
         for candidate in population.into_iter() {
             for _ in range(0, MUTATIONS) {
                 let mut candidate = candidate.clone();
@@ -211,7 +214,9 @@ impl Compressor {
                 let i = (y * w + x) as uint;
                 let (br, bg, bb) = self.base[i];
                 let (nr, ng, nb) = new_render[i];
-                let score = diff(br, nr) + diff(bg, ng) + diff(bb, nb);
+                let score = 0.9 * diff(br, nr) as f32
+                    + 1.5 * diff(bg, ng) as f32
+                    + 0.6 * diff(bb, nb) as f32;
 
                 if score > PIXEL_FIX_THRESHOLD {
                     img.pixels.push(Pixel {
@@ -231,6 +236,7 @@ impl Compressor {
         let (w, h) = img.dimensions;
         let new_render = render(img, true);
         self.error = Vec::from_fn(64, |_| 0);
+        let mut imgbuf = ImageBuf::new(w, h);
 
         for y in range(0, h) {
             for x in range(0, w) {
@@ -242,16 +248,28 @@ impl Compressor {
                 self.error[(x / 25 + y / 25 * 8) as uint] += score;
             }
         }
-    }
+
+        let max_score = self.error.iter().fold(1, |b, a| max(*a, b)) as f32;
+
+        for y in range(0, h) {
+            for x in range(0, w) {
+                let luma = image::Luma((self.error[(x / 25 + y / 25 * 8) as uint] as f32 / max_score * 255.0) as u8);
+                imgbuf.put_pixel(x, y, luma);
+            }
+        }
+
+        image::ImageLuma8(imgbuf).save(File::create(&Path::new("error.png")).unwrap(),
+                                       image::PNG);
+     }
 
     fn color_sum(&self, (r, g, b): (u8, u8, u8)) -> f32 {
         (r as f32) + (g as f32) + (b as f32)
     }
 
-    pub fn detect_edges(&self) {
+    pub fn detect_edges(&mut self) {
         let (w, h) = self.dimensions;
         let mut imgbuf = ImageBuf::new(w - 1, h - 1);
-        let mut edges = Vec::from_fn((w * h) as uint, |_| (0.0, 0.0));
+        self.edges = vec![];
 
         for y in range(1, h - 1) {
             for x in range(1, w - 1) {
@@ -282,11 +300,14 @@ impl Compressor {
                 }*/
 
                 let gradient = (lx * lx + ly * ly).sqrt();
-                edges[(y * w + x) as uint] = (gradient, ly.atan2(lx));
+                if gradient > 50.0 {
+                    self.edges.push((Point {x: x as f32, y: y as f32}, gradient, ly.atan2(lx)));
+                    imgbuf.put_pixel(x, y, image::Luma(255));
+                }
             }
         }
 
-        for y in range(1, h - 1) {
+        /*for y in range(1, h - 1) {
             for x in range(1, w - 1) {
                 let neighbors = [(x - 1, y - 1), (x, y - 1), (x + 1, y - 1),
                                  (x - 1, y), (x, y), (x + 1, y),
@@ -306,15 +327,15 @@ impl Compressor {
                     .collect();
                 let value = values.iter().fold(0.0, |b, a| b + *a);
 
-                if value > 3.0 {
+                if value > 1.0 {
                     imgbuf.put_pixel(x, y, image::Luma(255));
                     let qq: Vec<f32> = neighbors.iter().map(|&(nx, ny)| edges[(ny * w + nx) as uint].val1()).collect();
                     println!("x {}, y {}, gradient {}, value {}, values {}", x, y, my_gradient, value, qq);
                 }
             }
-        }
+        }*/
 
-        image::ImageLuma8(imgbuf).save(File::create(&Path::new("test.png")).unwrap(),
+        image::ImageLuma8(imgbuf).save(File::create(&Path::new("edges.png")).unwrap(),
                                        image::PNG);
     }
 }
