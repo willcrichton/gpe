@@ -2,7 +2,6 @@
 name = "gpe"
 version = "0.0.1"
 authors = ["Will Crichton <willcrichton@cmu.edu>"]
-build = "src/build.rs"
 
 [profile.dev]
 opt-level = 1

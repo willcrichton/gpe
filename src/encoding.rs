@@ -8,7 +8,6 @@ use constants::*;
 use compress::Compressor;
 
 #[deriving(Clone)]
-#[repr(C)]
 pub struct Point {
     pub x: f32,
     pub y: f32,
@@ -17,37 +16,20 @@ pub struct Point {
 pub type Color = (u8, u8, u8, u8);
 
 #[deriving(Clone)]
-#[repr(C)]
-pub struct RGB {
-    pub r: u8,
-    pub g: u8,
-    pub b: u8,
-}
-
-#[deriving(Clone)]
-#[repr(C)]
 pub struct Pixel {
     pub pos: Point,
-    pub color: RGB,
+    pub color: (u8, u8, u8),
 }
 
 #[deriving(Clone)]
 pub struct Polygon {
     pub vertices: Vec<Point>,
     pub color: Color,
+    pub blur: f32,
     edges: Vec<(Point, Point)>,
     center: Point,
     max_dist: f32,
     pub bounding_box: (Point, Point),
-}
-
-#[repr(C)]
-pub struct CPolygon {
-    vertices: *mut Point,
-    num_vertices: u32,
-    r: u8, g: u8, b: u8, a: u8,
-    center: Point,
-    max_dist: f32,
 }
 
 #[deriving(Clone)]
@@ -57,23 +39,13 @@ pub struct Encoding {
     pub pixels: Vec<Pixel>,
 }
 
-#[repr(C)]
-pub struct CEncoding {
-    polygons: *mut CPolygon,
-    num_polygons: u32,
-    pixels: *mut Pixel,
-    num_pixels: u32,
-    width: u32,
-    height: u32,
-}
-
 #[inline(always)]
-fn fmin(a: f32, b: f32) -> f32 {
+pub fn fmin(a: f32, b: f32) -> f32 {
     if a < b { a } else { b }
 }
 
 #[inline(always)]
-fn fmax(a: f32, b: f32) -> f32 {
+pub fn fmax(a: f32, b: f32) -> f32 {
     if a < b { b } else { a }
 }
 
@@ -159,6 +131,7 @@ impl Polygon {
         let mut polygon = Polygon {
             vertices: vertices,
             color: color,
+            blur: 0.0,
             edges: Vec::new(),
             center: Point {x: 0.0, y: 0.0},
             max_dist: 0.0,
@@ -171,8 +144,20 @@ impl Polygon {
 
     pub fn random(compressor: &Compressor) -> Option<Polygon> {
         let (w, h) = compressor.dimensions;
-        let origin = Point {x: random::<f32>() * (w as f32),
-                            y: random::<f32>() * (h as f32)};
+        let origin = if compressor.error.iter().fold(0, |b, a| b + *a) > 0 {
+            let mut regions: Vec<(uint, &uint)> = compressor.error.iter().enumerate().collect();
+            regions.sort_by(|&(_, a), &(_, b)| b.cmp(a));
+            let (region, _) = regions[random::<uint>() % 4];
+
+            let (x, y) = (region % 8, region / 8);
+
+            Point {x: (x as f32) * 25.0 + random::<f32>() * 25.0,
+                   y: (y as f32) * 25.0 + random::<f32>() * 25.0}
+        } else {
+            Point {x: random::<f32>() * (w as f32),
+                   y: random::<f32>() * (h as f32)}
+        };
+
 
         let mut vertices = vec![origin];
         for _ in range(0, VERTICES - 1) {
@@ -181,8 +166,6 @@ impl Polygon {
             clamp(&mut vtx, (w, h));
             vertices.push(vtx);
         }
-
-        println!("points {}, hull {}", vertices, order_points(vertices.clone()));
 
         let mut polygon = Polygon::new(order_points(vertices), (0, 0, 0, 0));
         let (mut r, mut g, mut b) = (0, 0, 0);
@@ -212,7 +195,9 @@ impl Polygon {
         polygon.color = (polygon.rand_color((r / count) as u8),
                          polygon.rand_color((g / count) as u8),
                          polygon.rand_color((b / count) as u8),
-                         random::<u8>() % 60 + 30);
+                         random::<u8>() % 130 + 125);
+
+        polygon.blur = 0.5 + random::<f32>() * 0.5;
 
         Some(polygon)
     }
@@ -290,15 +275,15 @@ impl Polygon {
         }
     }
 
-    pub fn mutate(&mut self, dimensions: (u32, u32)) {
+    pub fn mutate(&mut self, compressor: &Compressor) {
         let (mut r, mut g, mut b, mut a) = self.color;
         r = self.rand_color(r);
         g = self.rand_color(g);
         b = self.rand_color(b);
-        a = if should_mutate(CHANGE_COLOR_RATE) { random::<u8>() % 60 + 30 } else { a };
+        a = if should_mutate(CHANGE_COLOR_RATE) { random::<u8>() % 130 + 125 } else { a };
         self.color = (r, g, b, a);
 
-        if self.vertices.iter_mut().all(|v| v.mutate(dimensions)) {
+        if self.vertices.iter_mut().all(|v| v.mutate(compressor.dimensions)) {
             self.vertices = order_points(self.vertices.clone());
             self.update_data();
         }
@@ -315,37 +300,14 @@ impl Polygon {
             self.vertices.remove(index);
             self.update_data();
         }
-    }
 
-    pub fn raw(mut self) -> CPolygon {
-        let (r, g, b, a) = self.color;
-        CPolygon {
-            num_vertices: self.vertices.len() as u32,
-            vertices: self.vertices.as_mut_ptr(),
-            r: r, g: g, b: b, a: a,
-            center: self.center,
-            max_dist: self.max_dist,
+        if should_mutate(CHANGE_BLUR_RATE) {
+            self.blur = 0.5 + random::<f32>() * 0.5;
         }
     }
 }
 
 fn order_points(mut vertices: Vec<Point>) -> Vec<Point> {
-    /*let mut center = Point {x: 0.0, y: 0.0};
-
-    for vertex in vertices.iter() {
-        center = center + *vertex / (vertices.len() as f32);
-    }
-
-    let (cx, cy) = (center.x, center.y);
-    vertices.sort_by(|u, v| {
-        let det = (u.x - cx) * (v.y - cy) - (v.x - cx) * (u.y - cy);
-        if det < 0.0 { Less }
-        else if det > 0.0 { Greater }
-        else { Equal }
-    });
-
-    vertices*/
-
     vertices.sort_by(|u, v| {
         if u.x < v.x { Less }
         else { Greater }
@@ -362,7 +324,7 @@ fn order_points(mut vertices: Vec<Point>) -> Vec<Point> {
             // A = endpoint, B = point_on_hull, S[j] = vertex
             let line_side = (point_on_hull.x - endpoint.x) * (vertex.y - endpoint.y) -
                 (point_on_hull.y - endpoint.y) * (vertex.x - endpoint.x);
-            if endpoint.equiv(&point_on_hull) || line_side < 0.0 {
+            if endpoint.equiv(&point_on_hull) || line_side > 0.0 {
                 endpoint = *vertex;
             }
         }
@@ -382,21 +344,6 @@ impl fmt::Show for Encoding {
 }
 
 impl Encoding {
-    pub fn raw(mut self) -> CEncoding {
-        let (width, height) = self.dimensions;
-        let (poly_len, pixel_len) = (self.polygons.len() as u32, self.pixels.len() as u32);
-        let mut polygons: Vec<CPolygon> = self.polygons.into_iter().map(|p| p.raw()).collect();
-
-        CEncoding {
-            polygons: polygons.as_mut_ptr(),
-            num_polygons: poly_len,
-            pixels: self.pixels.as_mut_ptr(),
-            num_pixels: pixel_len,
-            width: width,
-            height: height,
-        }
-    }
-
     pub fn size(&self) -> uint {
         let mut size = 16; // width + height + num_pixels + num_polygons
         size += self.pixels.len() * (3 + 2); // color + position
@@ -406,11 +353,5 @@ impl Encoding {
         }
 
         size
-    }
-}
-
-impl fmt::Show for RGB {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", (self.r, self.g, self.b))
     }
 }

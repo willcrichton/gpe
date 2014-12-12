@@ -20,6 +20,7 @@ mod constants;
 mod fnvhasher;
 
 static mut THRESHOLD: f32 = 0.0;
+static mut ITERATIONS: uint = 0;
 static mut FIX: bool = false;
 
 fn main() {
@@ -44,6 +45,12 @@ fn main() {
         None => constants::FITNESS_THRESHOLD
     };
     unsafe { THRESHOLD = threshold; }
+
+    let iterations = match matches.opt_str("i") {
+        Some(s) => from_str(s.as_slice()).unwrap(),
+        None => 0
+    };
+    unsafe { ITERATIONS = iterations; }
 
     if matches.opt_present("f") {
         unsafe { FIX = true; }
@@ -77,6 +84,7 @@ fn opts() -> Vec<getopts::OptGroup> {
         optflag("h", "help", "show this help message"),
         optflag("f", "fix", "fix bad pixels"),
         optopt("t", "threshold", "terminate after reaching this fitness threshold", "0.75"),
+        optopt("i", "iterations", "terminate after doing this many iterations", "1000"),
         ]
 }
 
@@ -95,4 +103,8 @@ pub fn threshold() -> f32 {
 
 pub fn should_fix() -> bool {
     unsafe { FIX }
+}
+
+pub fn iterations() -> uint {
+    unsafe { ITERATIONS }
 }

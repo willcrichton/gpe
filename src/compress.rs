@@ -3,9 +3,12 @@ extern crate time;
 
 use std::sync::{Arc, TaskPool};
 use std::rand::random;
+use std::io::File;
+use std::num::Float;
+use std::num::FloatMath;
 
 use image::{GenericImage, imageops, ImageBuf};
-use encoding::{Encoding, Polygon, Pixel, Point, RGB};
+use encoding::{Encoding, Polygon, Pixel, Point, fmin, fmax};
 use render::{render, Image};
 use constants::*;
 
@@ -13,15 +16,22 @@ pub struct Compressor {
     pub dimensions: (u32, u32),
     pub base: Arc<Image>,
     pub downsampled: Arc<Image>,
+    pub error: Vec<uint>,
 }
 
 pub fn compress(img: image::ImageBuf<image::Rgb<u8>>) -> Encoding {
     let dimensions = img.dimensions();
-    let downsampled = Arc::new(imageops::resize(&img, 50, 50, image::Nearest).into_vec().into_iter().map(|p| p.channels()).collect());
+    let downsampled = Arc::new(imageops::resize(&img, 50, 50, image::Nearest)
+                               .into_vec().into_iter().map(|p| p.channels()).collect());
     let base = Arc::new(img.into_vec().into_iter().map(|p| p.channels()).collect());
-    let compressor = Compressor { dimensions: dimensions, base: base, downsampled: downsampled };
+    let mut compressor = Compressor { dimensions: dimensions,
+                                      base: base,
+                                      downsampled: downsampled,
+                                      error: Vec::new() };
+    compressor.detect_edges();
     let mut population = compressor.create_population();
     let max_score = compressor.max_score();
+    let max_iters = ::iterations();
 
     let mut iteration = 0u;
     let mut cur_time = time::get_time();
@@ -40,23 +50,18 @@ pub fn compress(img: image::ImageBuf<image::Rgb<u8>>) -> Encoding {
 
         population = new_population;
         let current_score = 1.0 - (min_fitness as f32 / max_score as f32);
-        info!("Iteration {} (size {}, score {}, time {}ms)", iteration,
-              population[0].polygons.len(), current_score, diff);
-        if current_score >= ::threshold() {
-            info!("Average time: {}ms", avg_time);
-            /*return Encoding {
-                /*polygons: vec![Polygon::new(
-                    vec![Point {x: 10.0, y: 10.0},
-                         Point {x: 30.0, y: 100.0},
-                         Point {x: 70.0, y: 100.0},
-                         Point {x: 100.0, y: 10.0},],
-                    (255, 0, 0, 255))
-                    ],*/
-                polygons: vec![Polygon::random(&compressor).unwrap()],
-                dimensions: dimensions,
-                pixels: vec![]
-            };*/
 
+        if iteration % 10 == 0 {
+            info!("Iteration {} (size {}, score {}, time {}ms)", iteration,
+                  population[0].polygons.len(), current_score, diff);
+        }
+
+        if iteration % 30 == 0 {
+            compressor.compute_error(&population[index]);
+        }
+
+        if current_score >= ::threshold() || (max_iters != 0 && iteration >= max_iters) {
+            info!("Average time: {}ms", avg_time);
             return if !::should_fix() { population[index].clone() }
             else { compressor.fix_pixels(population[index].clone()) }
         }
@@ -73,6 +78,8 @@ fn fitness((w, h): (u32, u32), base: Arc<Image>, downsampled: Arc<Image>, indivi
     let mut score = 0;
     let individual = individual.as_ref().unwrap();
     let new_render = render(individual, false);
+
+    /*
     let new_downsampled: Image = imageops::resize(
         &ImageBuf::from_pixels(
             new_render.iter().map(|&(r, g, b): &(u8, u8, u8)|
@@ -87,6 +94,7 @@ fn fitness((w, h): (u32, u32), base: Arc<Image>, downsampled: Arc<Image>, indivi
 
         score += 4 * (diff(br, nr) + diff(bg, ng) + diff(bb, nb));
     }
+     */
 
     for i in range(0, w * h) {
         let (br, bg, bb) = base[i as uint];
@@ -128,13 +136,13 @@ impl Compressor {
                 let mut new_polygons = vec![];
                 for mut polygon in candidate.polygons.into_iter() {
                     if should_mutate(REMOVE_POLYGON_RATE) { continue; }
-                    polygon.mutate(self.dimensions);
+                    polygon.mutate(self);
                     new_polygons.push(polygon);
                 }
 
                 candidate.polygons = new_polygons;
 
-                if should_mutate(ADD_POLYGON_RATE) {
+                if should_mutate(ADD_POLYGON_RATE) && candidate.polygons.len() < MAX_POLYGONS {
                     match Polygon::random(self) {
                         Some(p) => { candidate.polygons.push(p); }
                         None => {}
@@ -208,7 +216,7 @@ impl Compressor {
                 if score > PIXEL_FIX_THRESHOLD {
                     img.pixels.push(Pixel {
                         pos: Point { x: x as f32, y: y as f32 },
-                        color: RGB { r: br, g: bg, b: bb }
+                        color: (br, bg, bb)
                     });
                 }
             }
@@ -217,5 +225,96 @@ impl Compressor {
         info!("Fixed {} pixels", img.pixels.len());
 
         img
+    }
+
+    pub fn compute_error(&mut self, img: &Encoding) {
+        let (w, h) = img.dimensions;
+        let new_render = render(img, true);
+        self.error = Vec::from_fn(64, |_| 0);
+
+        for y in range(0, h) {
+            for x in range(0, w) {
+                let i = (y * w + x) as uint;
+                let (br, bg, bb) = self.base[i];
+                let (nr, ng, nb) = new_render[i];
+                let score = diff(br, nr) + diff(bg, ng) + diff(bb, nb);
+
+                self.error[(x / 25 + y / 25 * 8) as uint] += score;
+            }
+        }
+    }
+
+    fn color_sum(&self, (r, g, b): (u8, u8, u8)) -> f32 {
+        (r as f32) + (g as f32) + (b as f32)
+    }
+
+    pub fn detect_edges(&self) {
+        let (w, h) = self.dimensions;
+        let mut imgbuf = ImageBuf::new(w - 1, h - 1);
+        let mut edges = Vec::from_fn((w * h) as uint, |_| (0.0, 0.0));
+
+        for y in range(1, h - 1) {
+            for x in range(1, w - 1) {
+
+                // central differences
+                let lx = -0.5 * self.color_sum(self.base[(y * w + x - 1) as uint]) +
+                    0.5 * self.color_sum(self.base[(y * w + x + 1) as uint]);
+                let ly = -0.5 * self.color_sum(self.base[((y - 1) * w + x) as uint]) +
+                    0.5 * self.color_sum(self.base[((y + 1) * w + x) as uint]);
+
+                // sobel
+                /*let xfilter =
+                    [((x - 1, y - 1), -1.0), ((x - 1, y), -2.0), ((x - 1, y + 1), -1.0),
+                     ((x + 1, y - 1), 1.0), ((x + 1, y), 2.0), ((x + 1, y + 1), 1.0)];
+
+                let yfilter =
+                    [((x - 1, y + 1), -1.0), ((x, y + 1), -2.0), ((x + 1, y + 1), -1.0),
+                     ((x - 1, y - 1), 1.0), ((x, y - 1), 2.0), ((x + 1, y - 1), 1.0)];
+
+                let mut lx = 0.0;
+                for &((x, y), weight) in xfilter.iter() {
+                    lx += weight * self.color_sum(self.base[(y * w + x) as uint]);
+                }
+
+                let mut ly = 0.0;
+                for &((x, y), weight) in yfilter.iter() {
+                    ly += weight * self.color_sum(self.base[(y * w + x) as uint]);
+                }*/
+
+                let gradient = (lx * lx + ly * ly).sqrt();
+                edges[(y * w + x) as uint] = (gradient, ly.atan2(lx));
+            }
+        }
+
+        for y in range(1, h - 1) {
+            for x in range(1, w - 1) {
+                let neighbors = [(x - 1, y - 1), (x, y - 1), (x + 1, y - 1),
+                                 (x - 1, y), (x, y), (x + 1, y),
+                                 (x - 1, y + 1), (x, y + 1), (x + 1, y + 1)];
+                //let neighbors = [(x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1), (x, y)];
+                let (_, my_gradient) = edges[(y * w + x) as uint];
+
+                let values: Vec<f32> = neighbors
+                    .iter()
+                    .map(|&(nx, ny)| edges[(ny * w + nx) as uint])
+                    .filter(|&(gradient, _)| gradient.abs() > 0.001)
+                    .map(|(_, angle)| {
+                        let diff = (my_gradient - angle).abs();
+                        let tau: f32 = Float::pi();
+                        fmax(fmin(tau - diff, diff), 0.0)
+                    })
+                    .collect();
+                let value = values.iter().fold(0.0, |b, a| b + *a);
+
+                if value > 3.0 {
+                    imgbuf.put_pixel(x, y, image::Luma(255));
+                    let qq: Vec<f32> = neighbors.iter().map(|&(nx, ny)| edges[(ny * w + nx) as uint].val1()).collect();
+                    println!("x {}, y {}, gradient {}, value {}, values {}", x, y, my_gradient, value, qq);
+                }
+            }
+        }
+
+        image::ImageLuma8(imgbuf).save(File::create(&Path::new("test.png")).unwrap(),
+                                       image::PNG);
     }
 }
