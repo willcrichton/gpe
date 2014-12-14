@@ -1,34 +1,45 @@
-<!doctype html>
+<!DOCTYPE html>
 <html>
+
   <head>
-    <meta charset="utf-8">
+    <meta charset='utf-8'>
     <meta http-equiv="X-UA-Compatible" content="chrome=1">
-    <title>Genetic Polygon Encoding by willcrichton</title>
+    <meta name="description" content="Genetic Polygon Encoding : Image compression via polygons and genetic algorithms">
 
-    <link rel="stylesheet" href="stylesheets/styles.css">
-    <link rel="stylesheet" href="stylesheets/pygment_trac.css">
-    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-    <!--[if lt IE 9]>
-    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
-    <![endif]-->
+    <link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">
+
+    <title>Genetic Polygon Encoding</title>
   </head>
+
   <body>
-    <div class="wrapper">
-      <header>
-        <h1>Genetic Polygon Encoding</h1>
-        <p>Image compression via polygons and genetic algorithms</p>
 
-        <p class="view"><a href="https://github.com/willcrichton/gpe">View the Project on GitHub <small>willcrichton/gpe</small></a></p>
+    <!-- HEADER -->
+    <div id="header_wrap" class="outer">
+        <header class="inner">
+          <a id="forkme_banner" href="https://github.com/willcrichton/gpe">View on GitHub</a>
 
+          <h1 id="project_title">Genetic Polygon Encoding</h1>
+          <h2 id="project_tagline">Image compression via polygons and genetic algorithms</h2>
 
-        <ul>
-          <li><a href="https://github.com/willcrichton/gpe/zipball/master">Download <strong>ZIP File</strong></a></li>
-          <li><a href="https://github.com/willcrichton/gpe/tarball/master">Download <strong>TAR Ball</strong></a></li>
-          <li><a href="https://github.com/willcrichton/gpe">View On <strong>GitHub</strong></a></li>
-        </ul>
-      </header>
-      <section>
+            <section id="downloads">
+              <a class="zip_download_link" href="https://github.com/willcrichton/gpe/zipball/master">Download this project as a .zip file</a>
+              <a class="tar_download_link" href="https://github.com/willcrichton/gpe/tarball/master">Download this project as a tar.gz file</a>
+            </section>
+        </header>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div id="main_content_wrap" class="outer">
+      <section id="main_content" class="inner">
         <h2>
+<a id="final-writeup" class="anchor" href="#final-writeup" aria-hidden="true"><span class="octicon octicon-link"></span></a>Final Writeup</h2>
+
+<h3>
+<a id="summary" class="anchor" href="#summary" aria-hidden="true"><span class="octicon octicon-link"></span></a>Summary</h3>
+
+<p>I created a novel image compression scheme which combines the polygon and pixel bases. For images with less detail and harder edges, I found better compression than JPEG by a factor up to 18x.</p>
+
+<h2>
 <a id="checkpoint-2" class="anchor" href="#checkpoint-2" aria-hidden="true"><span class="octicon octicon-link"></span></a>Checkpoint 2</h2>
 
 <p>I've ported over the rendering to CUDA, although now that I've figured out Rust's foreign function interface, I might consider finally ending up just doing OpenGL, so there may be on final optimization pass to come on the rendering side.</p>
@@ -79,7 +90,7 @@
 <a id="proposal" class="anchor" href="#proposal" aria-hidden="true"><span class="octicon octicon-link"></span></a>Proposal</h2>
 
 <h3>
-<a id="summary" class="anchor" href="#summary" aria-hidden="true"><span class="octicon octicon-link"></span></a>Summary</h3>
+<a id="summary-1" class="anchor" href="#summary-1" aria-hidden="true"><span class="octicon octicon-link"></span></a>Summary</h3>
 
 <p>I will create a novel lossy image compression algorithm/format which decomposes an image into a small number of polygons using a genetic algorithm.</p>
 
@@ -125,12 +136,17 @@
 <li>Monday, December 8: algorithm is further optimized for speed, and benchmarks are created. Rest of the time is spent running tests and doing writeup.</li>
 </ul>
       </section>
-      <footer>
-        <p>This project is maintained by <a href="https://github.com/willcrichton">willcrichton</a></p>
-        <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></small></p>
+    </div>
+
+    <!-- FOOTER  -->
+    <div id="footer_wrap" class="outer">
+      <footer class="inner">
+        <p class="copyright">Genetic Polygon Encoding maintained by <a href="https://github.com/willcrichton">willcrichton</a></p>
+        <p>Published with <a href="http://pages.github.com">GitHub Pages</a></p>
       </footer>
     </div>
-    <script src="javascripts/scale.fix.js"></script>
+
     
+
   </body>
 </html>
