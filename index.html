@@ -4,11 +4,11 @@
   <head>
     <meta charset='utf-8'>
     <meta http-equiv="X-UA-Compatible" content="chrome=1">
-    <meta name="description" content="Genetic Polygon Encoding : Image compression via polygons and genetic algorithms">
+    <meta name="description" content="Image Compression in the Polygon Basis : A genetic algorithm to compress images using polygons">
 
     <link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">
 
-    <title>Genetic Polygon Encoding</title>
+    <title>Image Compression in the Polygon Basis</title>
   </head>
 
   <body>
@@ -18,8 +18,8 @@
         <header class="inner">
           <a id="forkme_banner" href="https://github.com/willcrichton/gpe">View on GitHub</a>
 
-          <h1 id="project_title">Genetic Polygon Encoding</h1>
-          <h2 id="project_tagline">Image compression via polygons and genetic algorithms</h2>
+          <h1 id="project_title">Image Compression in the Polygon Basis</h1>
+          <h2 id="project_tagline">A genetic algorithm to compress images using polygons</h2>
 
             <section id="downloads">
               <a class="zip_download_link" href="https://github.com/willcrichton/gpe/zipball/master">Download this project as a .zip file</a>
@@ -38,6 +38,40 @@
 <a id="summary" class="anchor" href="#summary" aria-hidden="true"><span class="octicon octicon-link"></span></a>Summary</h3>
 
 <p>I created a novel image compression scheme which combines the polygon and pixel bases. For images with less detail and harder edges, I found better compression than JPEG by a factor up to 18x.</p>
+
+<h3>
+<a id="background" class="anchor" href="#background" aria-hidden="true"><span class="octicon octicon-link"></span></a>Background</h3>
+
+<p>The fundamental problem here is approximating an image with a set of polygons. My image compressor uses a genetic algorithm written in Rust to maintain a set of candidate encodings and improve them over time. </p>
+
+<h4>
+<a id="the-basics" class="anchor" href="#the-basics" aria-hidden="true"><span class="octicon octicon-link"></span></a>The Basics</h4>
+
+<p>The process looks like this:</p>
+
+<p><img src="images/diagram.png" alt=""></p>
+
+<p>The algorithm terminates when any of the candidates reaches a certain fitness threshold, e.g. within 85% of the original image. In the basic implementation, fitness is defined as the sum of pixel differences between the rendered image for the candidate and the base image. </p>
+
+<p>Although it (in retrospect) should have been written using OpenGL and shaders, I hand-rolled the renderer which took a set of polygons and generated a corresponding RGB image. At first I wrote it in Rust, but in order to optimize performance I rewrote the renderer in C and later CUDA, although it turned out that neither of these was as fast as Rust primarily since the number of polygons is small, so the final renderer is Rust-based.</p>
+
+<p>This was a solid first attempt that mirrored the efforts others had done for the same problem, so I spent the remainder of the time working on optimizations for the various stages of the algorithm.</p>
+
+<h4>
+<a id="optimizations" class="anchor" href="#optimizations" aria-hidden="true"><span class="octicon octicon-link"></span></a>Optimizations</h4>
+
+<p>The optimizations break down into a couple categories:
+1. Mutations. These changed the way in which candidates changed over time, both by mutating existing polygons and adding new ones.</p>
+
+<ul>
+<li>Test
+
+<ol>
+<li>
+</li>
+</ol>
+</li>
+</ul>
 
 <h2>
 <a id="checkpoint-2" class="anchor" href="#checkpoint-2" aria-hidden="true"><span class="octicon octicon-link"></span></a>Checkpoint 2</h2>
@@ -95,7 +129,7 @@
 <p>I will create a novel lossy image compression algorithm/format which decomposes an image into a small number of polygons using a genetic algorithm.</p>
 
 <h3>
-<a id="background" class="anchor" href="#background" aria-hidden="true"><span class="octicon octicon-link"></span></a>Background</h3>
+<a id="background-1" class="anchor" href="#background-1" aria-hidden="true"><span class="octicon octicon-link"></span></a>Background</h3>
 
 <p>Roger Alsing showed in 2008 the possibility of <a href="http://rogeralsing.com/2008/12/07/genetic-programming-evolution-of-mona-lisa/">representing images with polygons</a>. He applied a genetic algorithm which randomly generates polygons and uses a stochastic selection process to prefer images closest to the one we want to generate. I want to extend this work to both a) be suitable as a new image format and b) generate optimal images as fast as possible.</p>
 
@@ -141,7 +175,7 @@
     <!-- FOOTER  -->
     <div id="footer_wrap" class="outer">
       <footer class="inner">
-        <p class="copyright">Genetic Polygon Encoding maintained by <a href="https://github.com/willcrichton">willcrichton</a></p>
+        <p class="copyright">Image Compression in the Polygon Basis maintained by <a href="https://github.com/willcrichton">willcrichton</a></p>
         <p>Published with <a href="http://pages.github.com">GitHub Pages</a></p>
       </footer>
     </div>
