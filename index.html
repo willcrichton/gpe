@@ -142,7 +142,22 @@ Original: 36k<br>
 New size: 29k<br>
 Compression: 1.24x  </p>
 
-<p></p>
+<p>Here, we see actual results. After running for nearly half an hour, the compressor produced an image more compact than JPEG but still close to the original. If you look closely, you can see artifacts around Pikachu's eyes and tail--these are pixels that the compressor deemed to be close enough to the original and hence did not fix.</p>
+
+<p><strong>Image 3: Painting.</strong> As expected, pentagons are not a solid approximation for high detail images. Even after running the algorithm for some time, the produced image was larger than the JPEG encoding.</p>
+
+<p><img src="images/mona.png" alt=""></p>
+
+<p>Time: 3:14:46<br>
+Original: 77k<br>
+New size: 84k<br>
+Compression: 0.92x </p>
+
+<p>Others have produced approximations <a href="http://rogeralsing.com/2008/12/07/genetic-programming-evolution-of-mona-lisa/">closer than I</a> with polygons, so this encoding shows definite room for improvement in the compressor. Because I wanted to find real compression boosts on clip-art style images, I directed my efforts towards improving the algorithm in that direction, hence real world images or paintings suffer as a result.</p>
+
+<p><strong>Other images.</strong> Here are the polygon approximations for other images run for approximately 3 minutes.</p>
+
+<p><img src="pokemon.png" alt=""></p>
 
 <hr>
 
