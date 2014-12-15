@@ -64,10 +64,18 @@
 
 <ol>
 <li>Mutations. These changed the way in which candidates changed over time, both by mutating existing polygons and adding new ones.
-i. <strong>Initial color.</strong> When a polygon is added, rather than select its color randomly, I set its color to the average of the pixels that it covers in the base image. This at least puts the color likely into a palette similar to the target.
-ii. <strong>Hard edge heuristic.</strong> Polygons will look most natural in an image when their hard edges line up with any found in the target image, so I applied a simple edge detection algorithm (Sobel filter) to identify points in the image that line on a line. When a polygon is placed, its vertices are placed on these edges.
-iii. <strong>Error regions.</strong> Every 100 generations, I recompute an error estimate for the image. This estimate groups the image into 25x25 blocks and sums the fitness scores within each block. I then identify the 8 lowest-scoring regions of the image and weight new polygons towards the regions in greatest need of assistance.
-iv. <strong>Blur parameter.</strong> Because most images aren't purely flat colors and hard edges, I added a blur parameter that softens the edges of a given polygon.</li>
+
+<ul>
+<li>
+<strong>Initial color.</strong> When a polygon is added, rather than select its color randomly, I set its color to the average of the pixels that it covers in the base image. This at least puts the color likely into a palette similar to the target.</li>
+<li>
+<strong>Hard edge heuristic.</strong> Polygons will look most natural in an image when their hard edges line up with any found in the target image, so I applied a simple edge detection algorithm (Sobel filter) to identify points in the image that line on a line. When a polygon is placed, its vertices are placed on these edges.</li>
+<li>
+<strong>Error regions.</strong> Every 100 generations, I recompute an error estimate for the image. This estimate groups the image into 25x25 blocks and sums the fitness scores within each block. I then identify the 8 lowest-scoring regions of the image and weight new polygons towards the regions in greatest need of assistance.</li>
+<li>
+<strong>Blur parameter.</strong> Because most images aren't purely flat colors and hard edges, I added a blur parameter that softens the edges of a given polygon.</li>
+</ul>
+</li>
 <li>Fitness.</li>
 </ol>
 
