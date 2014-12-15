@@ -1,36 +1,33 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-
   <head>
-    <meta charset='utf-8'>
+    <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="chrome=1">
-    <meta name="description" content="Image Compression in the Polygon Basis : A genetic algorithm to compress images using polygons">
+    <title>Image Compression in the Polygon Basis by willcrichton</title>
 
-    <link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">
-
-    <title>Image Compression in the Polygon Basis</title>
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/pygment_trac.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
   </head>
-
   <body>
+    <div class="wrapper">
+      <header>
+        <h1>Image Compression in the Polygon Basis</h1>
+        <p>A genetic algorithm to compress images using polygons</p>
 
-    <!-- HEADER -->
-    <div id="header_wrap" class="outer">
-        <header class="inner">
-          <a id="forkme_banner" href="https://github.com/willcrichton/gpe">View on GitHub</a>
+        <p class="view"><a href="https://github.com/willcrichton/gpe">View the Project on GitHub <small>willcrichton/gpe</small></a></p>
 
-          <h1 id="project_title">Image Compression in the Polygon Basis</h1>
-          <h2 id="project_tagline">A genetic algorithm to compress images using polygons</h2>
 
-            <section id="downloads">
-              <a class="zip_download_link" href="https://github.com/willcrichton/gpe/zipball/master">Download this project as a .zip file</a>
-              <a class="tar_download_link" href="https://github.com/willcrichton/gpe/tarball/master">Download this project as a tar.gz file</a>
-            </section>
-        </header>
-    </div>
-
-    <!-- MAIN CONTENT -->
-    <div id="main_content_wrap" class="outer">
-      <section id="main_content" class="inner">
+        <ul>
+          <li><a href="https://github.com/willcrichton/gpe/zipball/master">Download <strong>ZIP File</strong></a></li>
+          <li><a href="https://github.com/willcrichton/gpe/tarball/master">Download <strong>TAR Ball</strong></a></li>
+          <li><a href="https://github.com/willcrichton/gpe">View On <strong>GitHub</strong></a></li>
+        </ul>
+      </header>
+      <section>
         <h2>
 <a id="final-writeup" class="anchor" href="#final-writeup" aria-hidden="true"><span class="octicon octicon-link"></span></a>Final Writeup</h2>
 
@@ -63,7 +60,8 @@
 <p>The optimizations break down into a couple categories:</p>
 
 <ol>
-<li>Mutations. These changed the way in which candidates changed over time, both by mutating existing polygons and adding new ones.
+<li>
+<strong>Mutations.</strong> These changed the way in which candidates changed over time, both by mutating existing polygons and adding new ones.
 
 <ul>
 <li>
@@ -76,8 +74,41 @@
 <strong>Blur parameter.</strong> Because most images aren't purely flat colors and hard edges, I added a blur parameter that softens the edges of a given polygon.</li>
 </ul>
 </li>
-<li>Fitness.</li>
+<li>
+<strong>Fitness.</strong> By modifying the fitness function, we can keep candidates that look closer to the image we want to approximate.
+
+<ul>
+<li>
+<strong>Downsampling.</strong> Because the image will get compressed, it inevitably loses some quality, but we still want to retain its main features. Hence I downsample both the original image and each rendered image by a 75% and perform a fitness computation comparing the downsampled images to weight out differences in the details.</li>
+<li>
+<strong>Quadratic difference.</strong> Rather than having linear pixel difference (i.e. <code>|r1 - r2| + |g1 - g2| + |b1 - b1|</code>) I opted to use quadratic difference. This way candidates that produce larger improvements will get selected higher.</li>
+<li>
+<strong>Color weighting.</strong> Because the human eye perceives the various spectrums of light differently, I weight the importance of each color channel accordingly--for example, differences in the green channel matter more than the blue.</li>
+</ul>
+</li>
+<li>
+<strong>Appearance.</strong> To make the rendered image more pleasant, I added two key features.
+
+<ul>
+<li>
+<strong>Triangle gradients.</strong> This feature did not make it in the final algorithm, but you can see its previous incarnation in the checkpoints below. For each triangle, I had it fade at the edges to decrease the hardness of the edges. Ultimately I replaced this with the randomized blur parameter.</li>
+<li>
+<strong>Pixel fixing.</strong> When a pixel is sufficiently different from the corresponding pixel in the original image, I encode along with the polygons the exact pixel value which gets restored in the rendered image.</li>
+</ul>
+</li>
 </ol>
+
+<p><img src="images/geodude.png" alt=""></p>
+
+<h4>
+<a id="compression" class="anchor" href="#compression" aria-hidden="true"><span class="octicon octicon-link"></span></a>Compression</h4>
+
+<p>Our compression scheme is then, given <code>n</code> polygons with <code>k</code> points per polygon and <code>p</code> fixed pixels, our total file size is <code>n * (4 + k * 2) + p * (3 + 2)</code> since RGB values can be encoded with 3 bytes and positions can be encoded in 2 bytes for relatively small images.</p>
+
+<h3>
+<a id="results" class="anchor" href="#results" aria-hidden="true"><span class="octicon octicon-link"></span></a>Results</h3>
+
+<p>Results!</p>
 
 <h2>
 <a id="checkpoint-2" class="anchor" href="#checkpoint-2" aria-hidden="true"><span class="octicon octicon-link"></span></a>Checkpoint 2</h2>
@@ -176,17 +207,12 @@
 <li>Monday, December 8: algorithm is further optimized for speed, and benchmarks are created. Rest of the time is spent running tests and doing writeup.</li>
 </ul>
       </section>
-    </div>
-
-    <!-- FOOTER  -->
-    <div id="footer_wrap" class="outer">
-      <footer class="inner">
-        <p class="copyright">Image Compression in the Polygon Basis maintained by <a href="https://github.com/willcrichton">willcrichton</a></p>
-        <p>Published with <a href="http://pages.github.com">GitHub Pages</a></p>
+      <footer>
+        <p>This project is maintained by <a href="https://github.com/willcrichton">willcrichton</a></p>
+        <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></small></p>
       </footer>
     </div>
-
+    <script src="javascripts/scale.fix.js"></script>
     
-
   </body>
 </html>
