@@ -28,21 +28,21 @@
         </ul>
       </header>
       <section>
-        <h2>
-<a id="final-writeup" class="anchor" href="#final-writeup" aria-hidden="true"><span class="octicon octicon-link"></span></a>Final Writeup</h2>
+        <h1>
+<a id="final-writeup" class="anchor" href="#final-writeup" aria-hidden="true"><span class="octicon octicon-link"></span></a>Final Writeup</h1>
 
-<h3>
-<a id="summary" class="anchor" href="#summary" aria-hidden="true"><span class="octicon octicon-link"></span></a>Summary</h3>
+<h2>
+<a id="summary" class="anchor" href="#summary" aria-hidden="true"><span class="octicon octicon-link"></span></a>Summary</h2>
 
 <p>I created a novel image compression scheme which combines the polygon and pixel bases. For images with less detail and harder edges, I found better compression than JPEG by a factor up to 18x.</p>
 
-<h3>
-<a id="background" class="anchor" href="#background" aria-hidden="true"><span class="octicon octicon-link"></span></a>Background</h3>
+<h2>
+<a id="background" class="anchor" href="#background" aria-hidden="true"><span class="octicon octicon-link"></span></a>Background</h2>
 
 <p>The fundamental problem here is approximating an image with a set of polygons. My image compressor uses a genetic algorithm written in Rust to maintain a set of candidate encodings and improve them over time. </p>
 
-<h4>
-<a id="the-basics" class="anchor" href="#the-basics" aria-hidden="true"><span class="octicon octicon-link"></span></a>The Basics</h4>
+<h3>
+<a id="the-basics" class="anchor" href="#the-basics" aria-hidden="true"><span class="octicon octicon-link"></span></a>The Basics</h3>
 
 <p>The process looks like this:</p>
 
@@ -54,8 +54,8 @@
 
 <p>This was a solid first attempt that mirrored the efforts others had done for the same problem, so I spent the remainder of the time working on optimizations for the various stages of the algorithm.</p>
 
-<h4>
-<a id="optimizations" class="anchor" href="#optimizations" aria-hidden="true"><span class="octicon octicon-link"></span></a>Optimizations</h4>
+<h3>
+<a id="optimizations" class="anchor" href="#optimizations" aria-hidden="true"><span class="octicon octicon-link"></span></a>Optimizations</h3>
 
 <p>The optimizations break down into a couple categories:</p>
 
@@ -100,18 +100,18 @@
 
 <p><img src="images/geodude.png" alt=""></p>
 
-<h4>
-<a id="compression" class="anchor" href="#compression" aria-hidden="true"><span class="octicon octicon-link"></span></a>Compression</h4>
+<h3>
+<a id="compression" class="anchor" href="#compression" aria-hidden="true"><span class="octicon octicon-link"></span></a>Compression</h3>
 
 <p>Our compression scheme is then, given <code>n</code> polygons with <code>k</code> points per polygon and <code>p</code> fixed pixels, our total file size is <code>n * (4 + k * 2) + p * (3 + 2)</code> since RGB values can be encoded with 3 bytes and positions can be encoded in 2 bytes for relatively small images.</p>
 
-<h3>
-<a id="results" class="anchor" href="#results" aria-hidden="true"><span class="octicon octicon-link"></span></a>Results</h3>
-
-<p>Results!</p>
-
 <h2>
-<a id="checkpoint-2" class="anchor" href="#checkpoint-2" aria-hidden="true"><span class="octicon octicon-link"></span></a>Checkpoint 2</h2>
+<a id="results" class="anchor" href="#results" aria-hidden="true"><span class="octicon octicon-link"></span></a>Results</h2>
+
+<hr>
+
+<h1>
+<a id="checkpoint-2" class="anchor" href="#checkpoint-2" aria-hidden="true"><span class="octicon octicon-link"></span></a>Checkpoint 2</h1>
 
 <p>I've ported over the rendering to CUDA, although now that I've figured out Rust's foreign function interface, I might consider finally ending up just doing OpenGL, so there may be on final optimization pass to come on the rendering side.</p>
 
@@ -131,8 +131,10 @@
 <li>Weighting the addition of new polygons towards uncovered regions of the image</li>
 </ul>
 
-<h2>
-<a id="checkpoint-15" class="anchor" href="#checkpoint-15" aria-hidden="true"><span class="octicon octicon-link"></span></a>Checkpoint 1.5</h2>
+<hr>
+
+<h1>
+<a id="checkpoint-15" class="anchor" href="#checkpoint-15" aria-hidden="true"><span class="octicon octicon-link"></span></a>Checkpoint 1.5</h1>
 
 <p>In the last week, I rewrote the entire polygon renderer from scratch to use both radial gradients as well as antialiasing. I also added the basic polygon compressor. I've been working on:</p>
 
@@ -148,8 +150,10 @@
 
 <p>I'll update the next checkpoint with a higher quality image.</p>
 
-<h2>
-<a id="checkpoint-1" class="anchor" href="#checkpoint-1" aria-hidden="true"><span class="octicon octicon-link"></span></a>Checkpoint 1</h2>
+<hr>
+
+<h1>
+<a id="checkpoint-1" class="anchor" href="#checkpoint-1" aria-hidden="true"><span class="octicon octicon-link"></span></a>Checkpoint 1</h1>
 
 <p>I'm going to preface this by saying the past two weeks have been utter hell--I've been working from morning to midnight every day trying to finish compilers, do algo, and keep up with interviews and other commitments. By the end of this week, L5 will be done for compilers, and life settles down a bit since interview season is over. Hence, I don't have too much to show for checkpoint 1, but I will work twice as hard before the next checkpoint to stay on schedule.</p>
 
@@ -157,31 +161,33 @@
 
 <p>The schedule remains the same--I will have a basic genetic algorithm and a .gpe output file by the end of next week. Likewise, the anticipated deliverable remains the same: I'll have a ready-to-go image compressor and .gpe renderer to show off. If I have time, I'll also build a tool that lets you visualize the population of the genetic algorithm after each iteration.</p>
 
-<h2>
-<a id="proposal" class="anchor" href="#proposal" aria-hidden="true"><span class="octicon octicon-link"></span></a>Proposal</h2>
+<hr>
 
-<h3>
-<a id="summary-1" class="anchor" href="#summary-1" aria-hidden="true"><span class="octicon octicon-link"></span></a>Summary</h3>
+<h1>
+<a id="proposal" class="anchor" href="#proposal" aria-hidden="true"><span class="octicon octicon-link"></span></a>Proposal</h1>
+
+<h2>
+<a id="summary-1" class="anchor" href="#summary-1" aria-hidden="true"><span class="octicon octicon-link"></span></a>Summary</h2>
 
 <p>I will create a novel lossy image compression algorithm/format which decomposes an image into a small number of polygons using a genetic algorithm.</p>
 
-<h3>
-<a id="background-1" class="anchor" href="#background-1" aria-hidden="true"><span class="octicon octicon-link"></span></a>Background</h3>
+<h2>
+<a id="background-1" class="anchor" href="#background-1" aria-hidden="true"><span class="octicon octicon-link"></span></a>Background</h2>
 
 <p>Roger Alsing showed in 2008 the possibility of <a href="http://rogeralsing.com/2008/12/07/genetic-programming-evolution-of-mona-lisa/">representing images with polygons</a>. He applied a genetic algorithm which randomly generates polygons and uses a stochastic selection process to prefer images closest to the one we want to generate. I want to extend this work to both a) be suitable as a new image format and b) generate optimal images as fast as possible.</p>
 
-<h3>
-<a id="challenges" class="anchor" href="#challenges" aria-hidden="true"><span class="octicon octicon-link"></span></a>Challenges</h3>
+<h2>
+<a id="challenges" class="anchor" href="#challenges" aria-hidden="true"><span class="octicon octicon-link"></span></a>Challenges</h2>
 
 <p>Firstly, as far as I can tell, this space hasn't been explored beyond the above blog post and subsequent discussion the topic. There are no references on optimal genetic algorithms for mapping polygons to images. I've dealt in neither genetic algorithms nor image compression before, so I'll have to explore ways to optimize both.</p>
 
-<h3>
-<a id="resources" class="anchor" href="#resources" aria-hidden="true"><span class="octicon octicon-link"></span></a>Resources</h3>
+<h2>
+<a id="resources" class="anchor" href="#resources" aria-hidden="true"><span class="octicon octicon-link"></span></a>Resources</h2>
 
 <p>I'll just be using my own machine for the work. If it's suitable, I will draw from the Alsing codebase to provide a starting point for my compression algorithm. I will continue to explore the research space to find other genetic compression algorithms and see if they use any ideas applicable to my project.</p>
 
-<h3>
-<a id="goals" class="anchor" href="#goals" aria-hidden="true"><span class="octicon octicon-link"></span></a>Goals</h3>
+<h2>
+<a id="goals" class="anchor" href="#goals" aria-hidden="true"><span class="octicon octicon-link"></span></a>Goals</h2>
 
 <p><strong>Plan to Achieve</strong></p>
 
@@ -197,8 +203,8 @@
 <li>Achieve quality greater than or equal to JPEG without trading compression.</li>
 </ul>
 
-<h3>
-<a id="schedule" class="anchor" href="#schedule" aria-hidden="true"><span class="octicon octicon-link"></span></a>Schedule</h3>
+<h2>
+<a id="schedule" class="anchor" href="#schedule" aria-hidden="true"><span class="octicon octicon-link"></span></a>Schedule</h2>
 
 <ul>
 <li>Friday, November 14: have basic algorithm up and running, i.e. converting the Alsing algorithm to Rust.</li>
