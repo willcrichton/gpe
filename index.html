@@ -73,14 +73,14 @@
 <strong>Hard edge heuristic.</strong> Polygons will look most natural in an image when their hard edges line up with any found in the target image, so I applied a simple edge detection algorithm (Sobel filter) to identify points in the image that line on a line. When a polygon is placed, its vertices are placed on these edges. </li>
 </ul>
 
-<p><img src="images/geo2.png" alt=""></p>
+<center><img src="images/geo2.png" alt=""></center>
 
 <ul>
 <li>
 <strong>Error regions.</strong> Every 100 generations, I recompute an error estimate for the image. This estimate groups the image into 25x25 blocks and sums the fitness scores within each block. I then identify the 8 lowest-scoring regions of the image and weight new polygons towards the regions in greatest need of assistance. </li>
 </ul>
 
-<p><img src="images/geo3.png" alt=""></p>
+<center><img src="images/geo3.png" alt=""></center>
 
 <ul>
 <li>
@@ -286,6 +286,6 @@ Compression: 0.92x </p>
       </footer>
     </div>
     <script src="javascripts/scale.fix.js"></script>
-    
+
   </body>
 </html>
