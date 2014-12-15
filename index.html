@@ -119,7 +119,7 @@
 <h2>
 <a id="results" class="anchor" href="#results" aria-hidden="true"><span class="octicon octicon-link"></span></a>Results</h2>
 
-<p>First, let's look at a gallery of results. All source images are JPEG encoded.</p>
+<p>First, let's look at a gallery of results. All source images are 200x200 JPEG encoded.</p>
 
 <h3>
 <a id="gallery" class="anchor" href="#gallery" aria-hidden="true"><span class="octicon octicon-link"></span></a>Gallery</h3>
@@ -160,6 +160,17 @@ Compression: 0.92x </p>
 <p><img src="images/pokemon.png" alt=""></p>
 
 <p><img src="images/browsers.png" alt=""></p>
+
+<p><img src="images/kayvon.png" alt=""></p>
+
+<h3>
+<a id="performance" class="anchor" href="#performance" aria-hidden="true"><span class="octicon octicon-link"></span></a>Performance</h3>
+
+<p>Throughout the project, I continually profiled my code to find the hot spots and optimize them. Currently, as expected the vast majority (92.2%) of my time is spent rendering the image--specifically, 70.6% of the time is spent querying if a particular point is inside of a polygon. Although I optimized this test as best I could, it's still very much the bottleneck. The remaining 21.6% of the time is spent doing other rendering activities like blurring and antialiasing. </p>
+
+<p>I attempted to make the process as fast as possible by maintaining a work queue of the encodings that need to be rendered and running 16 workers (same as the number of cores on my laptop). I tested using Rust's foreign function interface to call out to CUDA and render on the GPU, but it turned out to be roughly 20% slower than just rendering sequentially in Rust. I'm not 100% sure why this is the case. It could be because I was launching ~32 kernels asynchronously every 10-20ms and each kernel launch was associated with two malloc/memory copies. When I profiled, the majority of my time was spent taking locks (implicitly done for me by CUDA, not my design), so perhaps it was the asynchronous launches that killed me.</p>
+
+<p>In retrospect, I should have rendered with OpenGL, since it can definitely render triangles (and hence polygons) substantially faster than I can, particularly since I only wrote a software renderer and didn't make use of any fixed function hardware.</p>
 
 <hr>
 
